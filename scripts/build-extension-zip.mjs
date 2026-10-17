@@ -15,13 +15,18 @@ const OUT = join(ROOT, "web/extension/studylens-extension.zip");
 
 execSync("npm --workspace extension run build", { cwd: ROOT, stdio: "inherit", env: { ...process.env, WXT_API_BASE: PLACEHOLDER } });
 
+// Chrome refuses to load a file containing Unicode noncharacters ("isn't UTF-8 encoded").
+const NONCHAR = /[\uFDD0-\uFDEF\uFFFE\uFFFF]/;
 const files = {};
 const walk = (dir) => {
   for (const name of readdirSync(dir).sort()) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p);
     // Fixed timestamps keep the zip byte-identical across rebuilds of the same source.
-    else files[`studylens/${relative(SRC, p).replaceAll("\\", "/")}`] = [readFileSync(p), { mtime: new Date("2026-01-01T00:00:00Z") }];
+    else {
+      if (/\.(js|css|html|json)$/.test(name) && NONCHAR.test(readFileSync(p, "utf8"))) throw new Error(`${relative(SRC, p)} contains a character Chrome rejects; see chromeSafeChars in extension/wxt.config.ts`);
+      files[`studylens/${relative(SRC, p).replaceAll("\\", "/")}`] = [readFileSync(p), { mtime: new Date("2026-01-01T00:00:00Z") }];
+    }
   }
 };
 walk(SRC);
