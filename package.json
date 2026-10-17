@@ -1,0 +1,21 @@
+{
+  "name": "studylens",
+  "private": true,
+  "workspaces": [
+    "web",
+    "extension",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace web run dev",
+    "dev:ext": "npm --workspace extension run dev",
+    "build": "npm --workspace web run build && npm --workspace extension run build",
+    "test": "vitest run",
+    "typecheck": "npm --workspaces --if-present run typecheck"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5",
+    "typescript": "^5"
+  },
+  "type": "module"
+}
