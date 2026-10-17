@@ -31,6 +31,27 @@ async function canvasAll(url: string, cap = 500): Promise<any[]> {
   return out;
 }
 
+const MAX_MATERIAL_CHARS = 60_000;
+
+/** Group items so each group's JSON stays under maxBytes (and the API's 60-item cap). */
+function bySize<T>(items: T[], maxBytes: number): T[][] {
+  const out: T[][] = [];
+  let cur: T[] = [];
+  let size = 0;
+  for (const it of items) {
+    const n = JSON.stringify(it).length;
+    if (cur.length && (size + n > maxBytes || cur.length >= 60)) {
+      out.push(cur);
+      cur = [];
+      size = 0;
+    }
+    cur.push(it);
+    size += n;
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
+
 let running: string | null = null;
 
 export async function syncCanvas(host: string, force = false): Promise<LmsSnapshot | null> {
@@ -58,10 +79,10 @@ export async function syncCanvas(host: string, force = false): Promise<LmsSnapsh
       snapshot.materials.push(...(await coursePages(base, c.id, course.externalId, course.url)));
     }
 
-    // Courses and assignments first (small), then materials in batches the API accepts.
+    // Courses and assignments first, then materials in batches under Vercel's ~4.5MB body limit.
     await api("/api/ingest", { body: { ...snapshot, materials: [] } });
-    for (let i = 0; i < snapshot.materials.length; i += 15) {
-      await api("/api/ingest", { body: { source: "canvas", host, courses: [], assignments: [], materials: snapshot.materials.slice(i, i + 15) } });
+    for (const batch of bySize(snapshot.materials.map((m) => ({ ...m, text: m.text.slice(0, MAX_MATERIAL_CHARS) })), 2_500_000)) {
+      await api("/api/ingest", { body: { source: "canvas", host, courses: [], assignments: [], materials: batch } });
     }
     await syncTimes.setValue({ ...(await syncTimes.getValue()), [host]: Date.now() });
     return snapshot;
