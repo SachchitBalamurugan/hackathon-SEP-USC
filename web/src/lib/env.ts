@@ -9,7 +9,8 @@ function required(name: string): string {
 export const env = {
   supabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL"),
   supabaseAnonKey: () => required("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  supabaseServiceKey: () => required("SUPABASE_SERVICE_KEY"),
+  // The Vercel Supabase integration provides SUPABASE_SERVICE_ROLE_KEY.
+  supabaseServiceKey: () => process.env.SUPABASE_SERVICE_ROLE_KEY || required("SUPABASE_SERVICE_KEY"),
   /** Optional: without it, material search falls back to full-text only. */
   openaiKey: () => process.env.OPENAI_API_KEY || null,
   cronSecret: () => process.env.CRON_SECRET || null,
