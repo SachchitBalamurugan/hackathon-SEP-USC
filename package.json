@@ -10,8 +10,9 @@
     "dev:web": "npm --workspace web run dev",
     "dev:ext": "npm --workspace extension run dev",
     "build": "npm --workspace web run build && npm --workspace extension run build",
-    "test": "vitest run",
-    "typecheck": "npm --workspaces --if-present run typecheck"
+    "test": "vitest run --exclude \"test/eval/**\"",
+    "typecheck": "npm --workspaces --if-present run typecheck",
+    "eval:check": "LIVE_EVAL=1 vitest run test/eval"
   },
   "devDependencies": {
     "vitest": "^5.0.5",

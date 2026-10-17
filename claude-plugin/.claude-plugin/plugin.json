@@ -1,0 +1,7 @@
+{
+  "name": "studylens",
+  "version": "0.1.0",
+  "description": "Gives Claude your courses, deadlines, skill mastery, recent homework mistakes and learning profile from StudyLens, and lets Claude save what it learns about how you learn.",
+  "author": { "name": "StudyLens" },
+  "keywords": ["education", "tutoring", "canvas", "google-classroom", "learning"]
+}

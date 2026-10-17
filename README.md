@@ -1,0 +1,85 @@
+# StudyLens
+
+A browser extension and a Claude connector for students. It syncs your courses from Canvas and Google Classroom, checks your work on any page (Kami, PDFs, Google Docs, online problem sets), marks mistakes in an overlay, explains with animated steps, graphs and diagrams, writes practice problems aimed at the misconception behind each mistake, and keeps a learner model that improves from three sources: course updates, what Claude learns in conversation, and how you use StudyLens.
+
+The infrastructure is adapted from FschoolAI: session-based LMS scraping, pairing codes, the check-my-work prompt, the draw-op vocabulary, the stream fence splitter, SM-2 and decaying skill memory.
+
+```
+extension/      WXT (MV3) + React. Overlay in a shadow root on every page; worker holds the key.
+web/            Next.js 16 on Vercel: dashboard, /api/*, and the MCP server at /api/mcp.
+packages/core/  Pure, tested logic shared by both (schemas, SM-2, mastery, LMS mappers, parsers).
+claude-plugin/  Claude Code plugin: remote MCP config plus a "tutor" skill.
+supabase/       Database migration (Postgres + pgvector).
+```
+
+## How the learner model learns
+
+| Input | Where it comes from | What it changes |
+|---|---|---|
+| Course updates | Each sync is diffed against the last: new work, moved deadlines, posted grades, missing work | `learner_events` (course) |
+| Claude context | MCP tools `record_observation` and `log_learning_event` | `learner_events` (claude), `skill_demos` |
+| Plugin usage | Checks, mark feedback, explanations, practice answers, and opt-in behaviour signals | `learner_events` (usage), `skill_demos`, `mistakes` |
+
+Skill mastery is recomputed on every read from `skill_demos` with a 14-day half-life, so it never drifts. Every 25 events (and daily by cron), `consolidate()` folds new events into structured traits with Haiku 5.5 and rewrites the profile document with Sonnet 5.5, using an optimistic version check so a student's own edit is never overwritten.
+
+## Setup
+
+### 1. Supabase
+
+Create a project at supabase.com, then run `supabase/migrations/20261016000000_init.sql` in the SQL editor (or `supabase db push`). Under Authentication > Providers > Email, either keep email confirmation on (links land on `/auth/callback`) or turn it off for a faster demo.
+
+Every table has RLS on with no client policies: the browser can't read or write anything directly, and all access goes through server routes that use the service key and filter by the authenticated user.
+
+### 2. Web app
+
+```bash
+npm install
+cp web/.env.example web/.env.local   # fill in Supabase keys and ANTHROPIC_API_KEY
+npm run dev:web                      # http://localhost:3000
+```
+
+`OPENAI_API_KEY` is optional and is used for embeddings only; without it, material search is full-text. All generation goes through Claude.
+
+### 3. Extension
+
+```bash
+cp extension/.env.example extension/.env   # WXT_API_BASE=http://localhost:3000 (or your Vercel URL)
+npm run dev:ext                            # opens Chrome with the extension loaded
+# or: npm --workspace extension run build, then load extension/.output/chrome-mv3 unpacked
+```
+
+Sign in on the dashboard, open **Connect**, get a pairing code, and enter it in the extension popup.
+
+### 4. Claude
+
+On **Connect**, create an MCP key. Then use one of these:
+
+- **Claude Code:** `claude mcp add --transport http studylens <site>/api/mcp --header "Authorization: Bearer <key>"`
+- **Claude Code plugin:** set `STUDYLENS_URL` and `STUDYLENS_KEY`, then `claude plugin install ./claude-plugin`. It adds the server and the tutor skill.
+- **Claude Desktop:** paste the `mcp-remote` snippet from the Connect page into `claude_desktop_config.json`.
+
+### 5. Deploy to Vercel
+
+Import the repo with Root Directory `web`, add the variables from `web/.env.example` (including a random `CRON_SECRET`), and deploy. `web/vercel.json` schedules the daily consolidation. Rebuild the extension with `WXT_API_BASE` set to the deployed URL.
+
+## Using it
+
+- **Check my work** (dock button, or Alt+Shift+C): screenshots the tab, finds and diagnoses mistakes, circles them on the page, then re-locates each error in a zoomed crop so the marks slide into place. Marks follow the page as it scrolls, including inner scroll containers like Kami's.
+- **Ask:** streamed explanations that can include your screen; diagrams, graphs and worked steps animate in.
+- **Practice:** problems targeted at your open mistakes and weak skills, graded server-side (answer keys never reach the browser), scheduled with SM-2. Two correct answers in a row resolve the mistake.
+- **Today:** what's due, the assignment this page probably belongs to, skills to work on, and per-site switches for auto-check and learning signals.
+
+## Privacy
+
+- Behaviour signals are **off by default**. When on, they record time active and idle, scroll depth, tab switches, pen strokes on drawing surfaces, and counts of delete/undo bursts. They never record keystrokes, text, field values or page content.
+- Nothing runs at all on email, banking, health, sign-in or password-manager sites.
+- Screenshots are taken only when you press Check, ask with "Include my screen", or turn on auto-check for a site. They are sent to the model and not stored.
+- The dashboard has export and delete for everything StudyLens has stored about you, and you can edit the profile directly.
+
+## Development
+
+```bash
+npm test               # unit tests: core logic, expression parser, MCP protocol surface
+npm run eval:check     # live vision eval over eval/fixtures (spends API credits)
+npm --workspace web run typecheck && npm --workspace extension run typecheck
+```
