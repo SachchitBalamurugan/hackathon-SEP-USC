@@ -20,7 +20,7 @@ export const GET = route(["session"], async (req, { userId }) => {
 
 /** Delete everything learned about the student. The account itself stays so they can keep using it. */
 export const DELETE = route(["session"], async (req, { userId }) => {
-  for (const t of ["agent_runs", "practice_items", "mistakes", "skill_demos", "learner_events", "materials", "assignments", "courses"] as const) {
+  for (const t of ["claude_tasks", "agent_runs", "practice_items", "mistakes", "skill_demos", "learner_events", "materials", "assignments", "courses"] as const) {
     await db().from(t).delete().eq("user_id", userId);
   }
   await db().from("learner_profile").update({ mind_doc: "", traits: {}, pending_events: 0 }).eq("user_id", userId);

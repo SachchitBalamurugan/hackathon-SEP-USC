@@ -6,7 +6,7 @@ import { DEMOS } from "@/lib/demos";
 import { TopBar } from "@/components/shell/TopBar";
 import { DemoVideo } from "@/components/DemoVideo";
 import { Sheet } from "@/components/ui";
-import { STEPS, stepDone } from "@/components/SetupChecklist";
+import { stepDone, stepsFor } from "@/components/SetupChecklist";
 
 export const metadata = { title: "Setup guide" };
 
@@ -27,13 +27,18 @@ const FIXES: { q: string; a: string }[] = [
     q: "Claude Desktop doesn't show StudyLens",
     a: "Use the key from Create a Claude key (it starts with sl_), not the pairing code. Copy the config from Connect as-is, keep this site running, then quit Claude fully from the tray or menu bar and reopen it.",
   },
+  {
+    q: "Check my work says to ask Claude",
+    a: "This StudyLens runs on your own Claude instead of its own model. Keep Claude Desktop connected (Connect, step 3), press Check my work, then tell Claude \"Check my work with StudyLens\". The marks appear on your page a few seconds after Claude answers.",
+  },
   { q: "My courses didn't sync", a: "Open your Canvas dashboard or Google Classroom with the extension on and stay on the page for a few seconds. Courses then appear under Courses." },
 ];
 
 export default async function SetupGuide() {
   const user = await requireUser();
   const status = await getOnboarding(user.id);
-  const complete = STEPS.filter((s) => stepDone(status, s.key)).length;
+  const steps = stepsFor(status);
+  const complete = steps.filter((s) => stepDone(status, s.key)).length;
   return (
     <>
       <TopBar title="Setup guide" description="Everything from creating your account to connecting Claude, in under a minute. Come back any time." />
@@ -43,9 +48,9 @@ export default async function SetupGuide() {
           <p className="t-meta px-1 pt-3">{DEMOS.setup.caption}</p>
         </section>
 
-        <Sheet title="Your progress" meta={`${complete} of ${STEPS.length} done. Each step ticks off by itself.`} action={<Link href="/dashboard/connect" className="btn btn-sm">Open Connect</Link>}>
+        <Sheet title="Your progress" meta={`${complete} of ${steps.length} done. Each step ticks off by itself.`} action={<Link href="/dashboard/connect" className="btn btn-sm">Open Connect</Link>}>
           <ol>
-            {STEPS.map((s, i) => {
+            {steps.map((s, i) => {
               const done = stepDone(status, s.key);
               return (
                 <li key={s.key} className="row">

@@ -1,7 +1,7 @@
 import "server-only";
 import { ZodError, type z } from "zod";
 import { corsHeaders, json, preflight, resolveUser, unauthorized, type Caller } from "./auth";
-import { RefusalError } from "./llm";
+import { ClaudeModeError, RefusalError } from "./llm";
 
 type Handler = (req: Request, caller: Caller) => Promise<Response>;
 
@@ -16,6 +16,7 @@ export function route(allow: Caller["via"][], fn: Handler) {
       return res;
     } catch (e) {
       if (e instanceof ZodError) return json(req, { error: "invalid_request", issues: e.issues.slice(0, 5) }, { status: 400 });
+      if (e instanceof ClaudeModeError) return json(req, { error: "claude_mode", message: e.message, prompt: e.prompt }, { status: 409 });
       if (e instanceof RefusalError) return json(req, { error: "declined", message: "The tutor couldn't help with this one." }, { status: 422 });
       console.error(e);
       return json(req, { error: "server_error" }, { status: 500 });

@@ -3,7 +3,7 @@ import { api, rawApi } from "@/lib/api";
 import { apiKey, settingsCache, syncTimes, type Settings } from "@/lib/config";
 import { bitmapFromDataUrl, encodeRegion } from "@/lib/image";
 import { syncCanvas } from "@/lib/canvasSync";
-import type { CheckResponse, ExplainStart, Reply, Request } from "@/lib/messages";
+import type { CheckResponse, ExplainStart, PollResponse, Queued, Reply, Request } from "@/lib/messages";
 
 // The worker owns the API key and all network access. Content scripts ask it to capture,
 // check, explain and sync; page scripts can never reach the key or the API.
@@ -50,9 +50,11 @@ async function handle(msg: Request, sender: Browser.runtime.MessageSender): Prom
       if (!cap) throw new Error("The screenshot expired. Try again.");
       const checkId = msg.checkId;
       const image = await encodeRegion(cap.bmp);
-      const result = await api<CheckResult>("/api/check", { body: { action: "check", image, mediaType: "image/jpeg", host: msg.host } });
+      const result = await api<CheckResult | Queued>("/api/check", { body: { action: "check", image, mediaType: "image/jpeg", host: msg.host } });
       return { ...result, checkId } satisfies CheckResponse;
     }
+    case "POLL_CHECK":
+      return api<PollResponse>("/api/check", { body: { action: "poll", taskId: msg.taskId } });
     case "REFINE": {
       const cap = captures.get(msg.checkId);
       if (!cap) return { mark: msg.mark };

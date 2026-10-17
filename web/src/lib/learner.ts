@@ -3,7 +3,7 @@ import { z } from "zod";
 import { after } from "next/server";
 import { computeMastery, sanitizePayload, skillKey, verifyMindDoc, type LearnerEvent, type Mastery } from "@studylens/core";
 import { db } from "./supabase";
-import { MODELS, parseStructured, fence, UNTRUSTED_RULE } from "./llm";
+import { hasModel, MODELS, parseStructured, fence, UNTRUSTED_RULE } from "./llm";
 import { watch, withCritique, type Content, type Run } from "./watchdog";
 
 // The learner model. Three inputs land in learner_events (course changes, Claude's
@@ -143,6 +143,8 @@ Keep it under 250 words, in second person addressed to the tutor ("They..."). Co
 ${UNTRUSTED_RULE}`;
 
 export async function consolidate(userId: string) {
+  // Claude mode: the student's Claude rewrites the profile through update_profile instead.
+  if (!hasModel()) return { folded: 0, skipped: "claude_mode" as const };
   return watch(userId, "consolidate", (run) => consolidateRun(userId, run));
 }
 
@@ -207,6 +209,23 @@ async function consolidateRun(userId: string, run: Run) {
       events.map((e) => e.id),
     );
   return { folded: events.length };
+}
+
+/**
+ * Claude mode: the student's Claude rewrites the profile (MCP update_profile). Same word limit
+ * and version bump as consolidate(); the events it has seen are marked folded.
+ */
+export async function writeProfile(userId: string, mindDoc: string) {
+  return watch(userId, "consolidate", async (run) => {
+    run.saw(verifyMindDoc(mindDoc));
+    const profile = await getProfile(userId);
+    const doc = trimWords(mindDoc, 300);
+    await db()
+      .from("learner_profile")
+      .upsert({ user_id: userId, mind_doc: doc, version: profile.version + 1, pending_events: 0, updated_at: new Date().toISOString() });
+    await db().from("learner_events").update({ consolidated_at: new Date().toISOString() }).eq("user_id", userId).is("consolidated_at", null);
+    return { words: doc.split(/\s+/).length, trimmed: doc !== mindDoc.trim() };
+  });
 }
 
 /** Cut to the last full sentence within the word limit, so an over-long profile still reads well. */

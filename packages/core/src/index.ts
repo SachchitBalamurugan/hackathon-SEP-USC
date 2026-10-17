@@ -13,3 +13,4 @@ export * from "./lms/diff";
 export * from "./expr";
 export * from "./graph";
 export * from "./monitor";
+export * from "./claude";

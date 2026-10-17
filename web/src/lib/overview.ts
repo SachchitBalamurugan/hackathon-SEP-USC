@@ -2,8 +2,9 @@ import "server-only";
 import { layoutGraph, summarizeRuns, type GraphLink, type PipelineHealth, type RunRow } from "@studylens/core";
 import { db } from "./supabase";
 import { getMastery } from "./learner";
+import { hasModel } from "./llm";
 
-export type Onboarding = { extension: boolean; courses: boolean; firstCheck: boolean; claude: boolean };
+export type Onboarding = { extension: boolean; courses: boolean; firstCheck: boolean; claude: boolean; claudeMode: boolean };
 
 /** The four setup steps, read from what actually exists for this user. */
 export async function getOnboarding(userId: string): Promise<Onboarding> {
@@ -13,7 +14,7 @@ export async function getOnboarding(userId: string): Promise<Onboarding> {
     db().from("learner_events").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("kind", "check_requested"),
     db().from("api_keys").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("kind", "mcp").not("last_used_at", "is", null),
   ]);
-  return { extension: (ext.count ?? 0) > 0, courses: (courses.count ?? 0) > 0, firstCheck: (checks.count ?? 0) > 0, claude: (claude.count ?? 0) > 0 };
+  return { extension: (ext.count ?? 0) > 0, courses: (courses.count ?? 0) > 0, firstCheck: (checks.count ?? 0) > 0, claude: (claude.count ?? 0) > 0, claudeMode: !hasModel() };
 }
 
 /** The watchdog's view of this student's last 30 days of tutor steps. */

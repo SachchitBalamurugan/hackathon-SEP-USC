@@ -21,6 +21,23 @@ export const MODELS = {
 const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as const;
 const withFallback = (model: string) => (model.startsWith("claude-sonnet-5-5") ? FALLBACK : {});
 
+/**
+ * Without ANTHROPIC_API_KEY the server makes no model calls at all ("Claude mode"): checks,
+ * questions, practice sets and the profile are handed to the student's own Claude through the
+ * MCP connector instead (see claudeTasks.ts and mcp.ts).
+ */
+export const hasModel = () => Boolean(process.env.ANTHROPIC_API_KEY);
+
+/** Thrown where the server would call a model in Claude mode; `prompt` is what to say to Claude. */
+export class ClaudeModeError extends Error {
+  constructor(
+    public prompt: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 let client: Anthropic | null = null;
 export function anthropic(): Anthropic {
   client ??= new Anthropic();

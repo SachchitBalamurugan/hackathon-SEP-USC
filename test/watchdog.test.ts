@@ -27,7 +27,7 @@ vi.mock("../web/src/lib/materials", () => ({ searchMaterials: vi.fn() }));
 const { watch, observe } = await import("../web/src/lib/watchdog");
 const { RefusalError, SchemaError } = await import("../web/src/lib/llm");
 const { patchCheck } = await import("../web/src/lib/check");
-const { patchPractice } = await import("../web/src/lib/practice");
+const { localGrade, patchPractice } = await import("../web/src/lib/practice");
 
 const mark = (o: Partial<Mark> = {}): Mark => ({ kind: "error", note: "sign flipped", nx: 0.5, ny: 0.5, w: 0.1, h: 0.05, shape: "circle", skill: "signs", misconception: "", ...o });
 const q = (o: Partial<{ question: string; type: "multiple_choice" | "short_answer"; options: string[]; answer: string }> = {}) => ({
@@ -119,5 +119,18 @@ describe("summarizeRuns", () => {
     ]);
     expect(h[0]).toMatchObject({ pipeline: "check", runs: 2, ok: 1, repaired: 1, reported: 1, topIssue: "mark_duplicate" });
     expect(h[1]).toMatchObject({ pipeline: "explain", failed: 1, topIssue: "timeout" });
+  });
+});
+
+describe("localGrade (Claude mode, no server model)", () => {
+  it("accepts the same answer written differently", () => {
+    expect(localGrade(" X = 4 ", "4").correct).toBe(true);
+    expect(localGrade("0.5", "1/2").correct).toBe(true);
+    expect(localGrade("-3x+12", "-3x + 12").correct).toBe(true);
+  });
+  it("marks anything else wrong and shows the key", () => {
+    const g = localGrade("-3x - 12", "-3x + 12");
+    expect(g).toMatchObject({ correct: false, score: 0 });
+    expect(g.feedback).toMatch(/-3x \+ 12/);
   });
 });

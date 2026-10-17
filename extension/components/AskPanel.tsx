@@ -3,11 +3,12 @@ import type { DrawOp } from "@studylens/core";
 import type { ExplainStart } from "@/lib/messages";
 import { DrawView } from "./DrawView";
 import { MathText } from "./MathText";
+import { ClaudeHandoff } from "./ClaudeHandoff";
 
-type Segment = { kind: "text"; text: string } | { kind: "draw"; ops: DrawOp[] };
+type Segment = { kind: "text"; text: string } | { kind: "draw"; ops: DrawOp[] } | { kind: "handoff"; prompt: string };
 type Turn = { role: "user" | "assistant"; segments: Segment[]; error?: string };
 
-const plain = (t: Turn) => t.segments.map((s) => (s.kind === "text" ? s.text : "[diagram]")).join("");
+const plain = (t: Turn) => t.segments.map((s) => (s.kind === "text" ? s.text : s.kind === "draw" ? "[diagram]" : "")).join("");
 
 export function AskPanel({ seed, onSeedUsed, onCaptureStart, onCaptureEnd }: { seed: string | null; onSeedUsed: () => void; onCaptureStart: () => void; onCaptureEnd: () => void }) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -44,7 +45,7 @@ export function AskPanel({ seed, onSeedUsed, onCaptureStart, onCaptureEnd }: { s
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       captured = true;
     }
-    port.onMessage.addListener((msg: { type: string; text?: string; ops?: DrawOp[]; message?: string }) => {
+    port.onMessage.addListener((msg: { type: string; text?: string; ops?: DrawOp[]; message?: string; prompt?: string }) => {
       if (captured) {
         captured = false;
         onCaptureEnd();
@@ -59,6 +60,9 @@ export function AskPanel({ seed, onSeedUsed, onCaptureStart, onCaptureEnd }: { s
         });
       } else if (msg.type === "draw" && msg.ops) {
         update((t) => ({ ...t, segments: [...t.segments, { kind: "draw", ops: msg.ops! }] }));
+      } else if (msg.type === "handoff" && msg.prompt) {
+        // Claude mode: this StudyLens has no model; the question goes to the student's Claude.
+        update((t) => ({ ...t, segments: [{ kind: "handoff", prompt: msg.prompt! }] }));
       } else if (msg.type === "error") {
         update((t) => ({ ...t, error: msg.message }));
       }
@@ -83,7 +87,9 @@ export function AskPanel({ seed, onSeedUsed, onCaptureStart, onCaptureEnd }: { s
         {!turns.length && <p className="sl-muted">Ask about anything on this page. StudyLens sees your screen (if you allow it), knows your courses, and explains with visuals.</p>}
         {turns.map((t, i) => (
           <div key={i} className={`sl-turn sl-turn-${t.role}`}>
-            {t.segments.map((s, j) => (s.kind === "text" ? <MathText key={j} text={s.text} /> : <DrawView key={j} ops={s.ops} />))}
+            {t.segments.map((s, j) =>
+              s.kind === "text" ? <MathText key={j} text={s.text} /> : s.kind === "draw" ? <DrawView key={j} ops={s.ops} /> : <ClaudeHandoff key={j} prompt={s.prompt} />,
+            )}
             {t.role === "assistant" && !t.segments.length && !t.error && <span className="sl-typing" aria-label="Thinking" />}
             {t.error && <p className="sl-error">{t.error}</p>}
           </div>

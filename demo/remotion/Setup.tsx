@@ -20,7 +20,7 @@ const CHAPTERS: Chapter[] = [
   { title: "Pair it with your account", detail: "Get a code on Connect, type it in the extension.", url: "studylens / dashboard / connect", len: 230, Scene: Pair },
   { title: "Sync your courses", detail: "Open Canvas or Classroom once. That's it.", url: "canvas.school.edu / dashboard", len: 190, Scene: Sync },
   { title: "Check your work", detail: "On any homework page: Check my work (Alt+Shift+C).", url: "kami.app / worksheet-4.pdf", len: 200, Scene: CheckWork },
-  { title: "Connect Claude (optional)", detail: "Create a key, paste the config, restart Claude.", url: "claude_desktop_config.json", len: 280, Scene: Claude },
+  { title: "Connect Claude", detail: "Create a key, paste the config, restart Claude.", url: "claude_desktop_config.json", len: 280, Scene: Claude },
 ];
 const START = CHAPTERS.reduce<number[]>((a, c, i) => [...a, i ? a[i - 1] + CHAPTERS[i - 1].len : 30], []);
 const OUTRO = 75;

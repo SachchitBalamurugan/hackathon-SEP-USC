@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { DRAW_GUIDE, FenceSplitter, validateDrawOps, verifyExplain, type SplitEvent } from "@studylens/core";
+import { CLAUDE_PROMPTS, DRAW_GUIDE, FenceSplitter, validateDrawOps, verifyExplain, type SplitEvent } from "@studylens/core";
 import { body, OPTIONS, route } from "@/lib/route";
-import { fence, streamText, UNTRUSTED_RULE } from "@/lib/llm";
+import { fence, hasModel, streamText, UNTRUSTED_RULE } from "@/lib/llm";
+import { queueTask } from "@/lib/claudeTasks";
 import { learnerContext, recordEvents } from "@/lib/learner";
 import { searchMaterials } from "@/lib/materials";
 import { watch } from "@/lib/watchdog";
@@ -34,6 +35,7 @@ ${UNTRUSTED_RULE}`;
 
 export const POST = route(["extension", "session"], async (req, { userId }) => {
   const input = await body(req, schema);
+  if (!hasModel()) return handoff(userId, input);
   const [context, materials] = await Promise.all([learnerContext(userId), searchMaterials(userId, input.question, 3)]);
 
   const preamble = [
@@ -96,5 +98,16 @@ export const POST = route(["extension", "session"], async (req, { userId }) => {
   });
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
 });
+
+/**
+ * Claude mode: no model here, so the question goes to the student's own Claude. A screenshot is
+ * queued for get_my_screen; the overlay shows what to say to Claude, in the same stream format.
+ */
+async function handoff(userId: string, input: z.infer<typeof schema>) {
+  if (input.image) await queueTask(userId, "ask", { image: `data:${input.image.mediaType};base64,${input.image.data}`, host: input.page?.host, question: input.question });
+  await recordEvents(userId, [{ source: "usage", kind: "explain_requested", payload: { topic: input.question.slice(0, 120), host: input.page?.host ?? "", via: "claude" } }]);
+  const line = JSON.stringify({ type: "handoff", prompt: CLAUDE_PROMPTS.ask(input.question, Boolean(input.image)) }) + "\n";
+  return new Response(line, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
+}
 
 export { OPTIONS };

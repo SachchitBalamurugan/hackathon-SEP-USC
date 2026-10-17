@@ -689,3 +689,20 @@ math {
   letter-spacing: -0.01em;
   margin: 0;
 }
+
+/* Claude mode hand-off */
+.sl-handoff {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sl-handoff-prompt {
+  background: var(--sl-surface);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+  user-select: all;
+}
+.sl-handoff a.sl-btn {
+  text-decoration: none;
+}

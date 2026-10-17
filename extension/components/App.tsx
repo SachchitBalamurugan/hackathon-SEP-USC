@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LearnerEvent, Mark } from "@studylens/core";
+import { type CheckResult, type LearnerEvent, type Mark } from "@studylens/core";
 import { anchorMarks } from "@/lib/anchor";
-import { send, type CheckResponse, type Push } from "@/lib/messages";
+import { send, type CheckResponse, type PollResponse, type Push } from "@/lib/messages";
 import { settingsCache, type Settings } from "@/lib/config";
 import { MarksLayer, type PlacedMarks } from "./MarksLayer";
 import { AskPanel } from "./AskPanel";
@@ -9,6 +9,7 @@ import { PracticePanel } from "./PracticePanel";
 import { TodayPanel, type Context } from "./TodayPanel";
 import { MathText } from "./MathText";
 import { FirstRun, firstRunDone } from "./FirstRun";
+import { ClaudeHandoff } from "./ClaudeHandoff";
 
 type Tab = "check" | "ask" | "practice" | "today";
 const TABS: { id: Tab; label: string }[] = [
@@ -23,8 +24,13 @@ const STAGES = ["Capturing your screen", "Reading your work", "Placing marks"] a
 type CheckState =
   | { state: "idle" }
   | { state: "working"; stage: number }
+  | { state: "claude"; prompt: string; copied: boolean }
   | { state: "done"; summary: string; question: string; errors: number; correct: number }
   | { state: "error"; error: string };
+
+const POLL_MS = 2500;
+const POLL_FOR_MS = 15 * 60_000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
@@ -48,6 +54,35 @@ export function App({ setHidden, emit, trackingActive, registerAutoCheck }: { se
   const [askSeed, setAskSeed] = useState<string | null>(null);
   const [practiceFocus, setPracticeFocus] = useState<{ skill?: string } | null>(null);
   const busy = useRef(false);
+  /** The check whose Claude-mode marks we are waiting for; a new check cancels the wait. */
+  const pollId = useRef<string | null>(null);
+  /** Learned from the first check: auto-check would queue work for Claude nobody asked for. */
+  const claudeMode = useRef(false);
+
+  const place = useCallback(
+    async (result: CheckResult, checkId: string, refine: boolean) => {
+      setHidden(true);
+      await nextFrame();
+      const anchors = anchorMarks(result.marks);
+      setHidden(false);
+      const errors = result.marks.filter((m) => m.kind === "error").length;
+      const correct = result.marks.filter((m) => m.kind === "correct").length;
+      setPlaced({ checkId, marks: result.marks, anchors, refining: result.marks.map((m) => refine && m.kind === "error") });
+      setCheck({ state: "done", summary: result.summary, question: result.question, errors, correct });
+      if (!refine) return;
+      // Zoomed refine pass: each error mark slides to its tighter position as it returns.
+      result.marks.forEach((m, i) => {
+        if (m.kind !== "error") return;
+        send<{ mark: Mark }>({ type: "REFINE", checkId, mark: m })
+          .then(({ mark }) => mark)
+          .catch(() => m)
+          .then((mark) =>
+            setPlaced((p) => (p && p.checkId === checkId ? { ...p, marks: p.marks.map((x, j) => (j === i ? mark : x)), refining: p.refining.map((x, j) => (j === i ? false : x)) } : p)),
+          );
+      });
+    },
+    [setHidden],
+  );
 
   useEffect(() => {
     send<{ paired: boolean }>({ type: "STATUS" })
@@ -75,31 +110,40 @@ export function App({ setHidden, emit, trackingActive, registerAutoCheck }: { se
         setHidden(true);
         await nextFrame();
         const { checkId } = await send<{ checkId: string }>({ type: "CAPTURE" });
+        pollId.current = checkId;
         setHidden(false); // captured; the dock comes back while the model reads it
         setCheck({ state: "working", stage: 1 });
-        const result = await send<CheckResponse>({ type: "CHECK", checkId, host });
+        const res = await send<CheckResponse>({ type: "CHECK", checkId, host });
+        if ("queued" in res) {
+          // Claude mode: the student's own Claude reads the screenshot. Hand them the words to
+          // say, then wait for the marks it posts back.
+          claudeMode.current = true;
+          if (silent) {
+            setCheck({ state: "idle" });
+            return;
+          }
+          busy.current = false; // waiting on Claude must not block a fresh check
+          const copied = await navigator.clipboard.writeText(res.prompt).then(
+            () => true,
+            () => false,
+          );
+          setCheck({ state: "claude", prompt: res.prompt, copied });
+          setOpen(true);
+          const until = Date.now() + POLL_FOR_MS;
+          let result: CheckResult | null = null;
+          while (!result && Date.now() < until && pollId.current === checkId) {
+            await sleep(POLL_MS);
+            const poll = await send<PollResponse>({ type: "POLL_CHECK", taskId: res.taskId }).catch(() => null);
+            if (poll?.status === "done") result = poll.result;
+          }
+          if (pollId.current !== checkId) return;
+          if (!result) throw new Error("Claude didn't send marks back. Press Check my work to try again.");
+          await place(result, checkId, false);
+          return;
+        }
         setCheck({ state: "working", stage: 2 });
-        setHidden(true);
-        await nextFrame();
-        const anchors = anchorMarks(result.marks);
-        setHidden(false);
-        const errors = result.marks.filter((m) => m.kind === "error").length;
-        const correct = result.marks.filter((m) => m.kind === "correct").length;
-        setPlaced({ checkId: result.checkId, marks: result.marks, anchors, refining: result.marks.map((m) => m.kind === "error") });
-        setCheck({ state: "done", summary: result.summary, question: result.question, errors, correct });
-        if (silent && errors) setOpen(true);
-        // Zoomed refine pass: each error mark slides to its tighter position as it returns.
-        result.marks.forEach((m, i) => {
-          if (m.kind !== "error") return;
-          send<{ mark: Mark }>({ type: "REFINE", checkId: result.checkId, mark: m })
-            .then(({ mark }) => mark)
-            .catch(() => m)
-            .then((mark) =>
-              setPlaced((p) =>
-                p && p.checkId === result.checkId ? { ...p, marks: p.marks.map((x, j) => (j === i ? mark : x)), refining: p.refining.map((x, j) => (j === i ? false : x)) } : p,
-              ),
-            );
-        });
+        await place(res, checkId, true);
+        if (silent && res.marks.some((m) => m.kind === "error")) setOpen(true);
       } catch (e) {
         setHidden(false);
         setCheck({ state: "error", error: (e as Error).message });
@@ -107,10 +151,10 @@ export function App({ setHidden, emit, trackingActive, registerAutoCheck }: { se
         busy.current = false;
       }
     },
-    [host, setHidden],
+    [host, setHidden, place],
   );
 
-  useEffect(() => registerAutoCheck(() => runCheck(true)), [registerAutoCheck, runCheck]);
+  useEffect(() => registerAutoCheck(() => !claudeMode.current && runCheck(true)), [registerAutoCheck, runCheck]);
 
   useEffect(() => {
     const onPush = (msg: Push) => {
@@ -214,6 +258,7 @@ export function App({ setHidden, emit, trackingActive, registerAutoCheck }: { se
                           {check.state === "done" ? "Check again" : "Check my work"}
                         </button>
                       )}
+                      {check.state === "claude" && <ClaudeHandoff prompt={check.prompt} copied={check.copied} waiting="Waiting for Claude. The marks appear on this page when it answers." />}
                       {check.state === "idle" && <p className="sl-muted sl-small">Takes a screenshot of this tab, finds mistakes and circles them on the page. Shortcut: Alt+Shift+C.</p>}
                       {check.state === "error" && <p className="sl-error">{check.error}</p>}
                       {check.state === "done" && (

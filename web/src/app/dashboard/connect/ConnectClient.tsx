@@ -163,8 +163,12 @@ export function ConnectSteps({ initial, mcpUrl }: { initial: Onboarding; mcpUrl:
         <p className="t-meta mb-3">Click the StudyLens icon in your toolbar and type this code.</p>
         <PairCode paired={status.extension} />
       </Step>
-      <Step n={3} id="claude" title="Connect Claude (optional)" done={status.claude} active={active === 3}>
-        <p className="t-meta mb-3">Claude can then see your courses, skills and mistakes, and save what it learns about how you learn.</p>
+      <Step n={3} id="claude" title={status.claudeMode ? "Connect Claude" : "Connect Claude (optional)"} done={status.claude} active={active === 3}>
+        <p className="t-meta mb-3">
+          {status.claudeMode
+            ? "Required: StudyLens runs on your own Claude. It checks your work, answers your questions and writes your practice, using what StudyLens knows about you. Use Claude Desktop, and keep it connected."
+            : "Claude can then see your courses, skills and mistakes, and save what it learns about how you learn."}
+        </p>
         <ClaudeSetup mcpUrl={mcpUrl} />
       </Step>
     </div>

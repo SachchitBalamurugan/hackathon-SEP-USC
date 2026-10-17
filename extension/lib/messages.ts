@@ -9,6 +9,7 @@ export type Request =
   | { type: "CAPTURE" }
   | { type: "CHECK"; checkId: string; host: string }
   | { type: "REFINE"; checkId: string; mark: Mark }
+  | { type: "POLL_CHECK"; taskId: string }
   | { type: "PRACTICE"; body: Record<string, unknown> }
   | { type: "CONTEXT" }
   | { type: "EVENTS"; events: LearnerEvent[] }
@@ -19,7 +20,10 @@ export type Request =
   | { type: "SYNC_CANVAS"; origin: string; force?: boolean }
   | { type: "CLASSROOM_CAPTURE"; courses: LmsCourse[]; assignments: LmsAssignment[] };
 
-export type CheckResponse = CheckResult & { checkId: string };
+/** Claude mode: the screenshot is waiting for the student's Claude; poll taskId for the marks. */
+export type Queued = { queued: true; taskId: string; prompt: string };
+export type CheckResponse = (CheckResult | Queued) & { checkId: string };
+export type PollResponse = { status: "pending" | "done"; result: CheckResult | null };
 
 export type Reply<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 

@@ -1,6 +1,7 @@
 import { json, OPTIONS, route } from "@/lib/route";
 import { getMastery, getOpenMistakes, getProfile, getUpcoming } from "@/lib/learner";
 import { db } from "@/lib/supabase";
+import { hasModel } from "@/lib/llm";
 
 // What the overlay dock shows: due work, weak and strong skills, open mistakes, and the
 // student's tracking settings so the extension honours them.
@@ -19,6 +20,8 @@ export const GET = route(["extension", "session"], async (req, { userId }) => {
     weak: mastery.filter((m) => m.status === "shaky" || m.level < 0.6).slice(0, 6),
     strong: mastery.filter((m) => m.status === "verified").slice(-6),
     profile: { summary: profile.mind_doc.slice(0, 600), updatedAt: profile.updated_at },
+    // "claude": no server model; checks, questions and practice go through the student's Claude.
+    mode: hasModel() ? "api" : "claude",
     settings: settings ?? { tracking_enabled: false, paused_hosts: [], auto_check_hosts: [] },
   });
 });

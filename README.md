@@ -22,6 +22,19 @@ supabase/       Database migration (Postgres + pgvector).
 
 Skill mastery is recomputed on every read from `skill_demos` with a 14-day half-life, so it never drifts. Every 25 events (and daily by cron), `consolidate()` folds new events into structured traits with Haiku 5.5 and rewrites the profile document with Sonnet 5.5, using an optimistic version check so a student's own edit is never overwritten.
 
+## Claude mode: no API key needed
+
+Leave `ANTHROPIC_API_KEY` unset and StudyLens makes no model calls of its own. Each student's own Claude does the thinking through the StudyLens connector (Claude Desktop, set up on **Connect**):
+
+| Feature | What happens |
+|---|---|
+| Check my work | The extension uploads the screenshot and copies "Check my work with StudyLens". Claude calls `get_pending_check`, reads the screenshot, and posts marks with `submit_check_result`; they appear on the page a moment later. |
+| Ask | The question (and screenshot, if shared) goes to Claude, which fetches the screen with `get_my_screen`. |
+| Practice | Claude writes the set from `generate_practice_problems`' brief and saves it with `save_practice_problems`. StudyLens grades by exact or numeric match, or takes Claude's verdict. |
+| Profile | Claude rewrites it with `update_profile`. |
+
+Everything Claude sends back goes through the same watchdog checks as the server's own model output. A Claude.ai subscription can't be called from a server, which is why the work flows through the connector instead. With a key set, everything runs server-side as before.
+
 ## Setup
 
 ### 1. Supabase
@@ -34,7 +47,7 @@ Every table has RLS on with no client policies: the browser can't read or write 
 
 ```bash
 npm install
-cp web/.env.example web/.env.local   # fill in Supabase keys and ANTHROPIC_API_KEY
+cp web/.env.example web/.env.local   # fill in Supabase keys; ANTHROPIC_API_KEY is optional (see Claude mode)
 npm run dev:web                      # http://localhost:3000
 ```
 
