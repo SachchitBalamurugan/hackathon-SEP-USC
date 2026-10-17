@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/session";
 import { db } from "@/lib/supabase";
 import { TopBar } from "@/components/shell/TopBar";
 import { Sheet } from "@/components/ui";
-import { PrivacyControls } from "./PrivacyControls";
+import { DeleteData, PrivacyControls } from "./PrivacyControls";
 
 export const metadata = { title: "Privacy" };
 
@@ -41,7 +41,7 @@ export default async function Privacy() {
             <a className="btn btn-secondary" href="/api/me">
               Export my data
             </a>
-            <PrivacyControls.Delete />
+            <DeleteData />
           </div>
         </Sheet>
       </div>

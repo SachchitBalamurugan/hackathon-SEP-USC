@@ -75,7 +75,7 @@ async function handle(msg: Request, sender: Browser.runtime.MessageSender): Prom
     }
     case "SYNC_CANVAS": {
       if (!(await apiKey.getValue())) return { skipped: "not_paired" };
-      const snap = await syncCanvas(msg.host, msg.force);
+      const snap = await syncCanvas(msg.origin, msg.force);
       return snap ? { courses: snap.courses.length, assignments: snap.assignments.length, materials: snap.materials.length } : { skipped: "recent" };
     }
     case "CLASSROOM_CAPTURE": {

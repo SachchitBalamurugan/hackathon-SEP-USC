@@ -16,7 +16,7 @@ export type Request =
   | { type: "PAIR"; code: string }
   | { type: "STATUS" }
   | { type: "SIGN_OUT" }
-  | { type: "SYNC_CANVAS"; host: string; force?: boolean }
+  | { type: "SYNC_CANVAS"; origin: string; force?: boolean }
   | { type: "CLASSROOM_CAPTURE"; courses: LmsCourse[]; assignments: LmsAssignment[] };
 
 export type CheckResponse = CheckResult & { checkId: string };

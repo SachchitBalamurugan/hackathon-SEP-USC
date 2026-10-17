@@ -19,7 +19,7 @@ export default defineContentScript({
     // Nothing at all runs on email, banking, health or password-manager sites.
     if (!host || isSensitiveHost(host)) return;
 
-    if (isCanvasHost(host, document)) send({ type: "SYNC_CANVAS", host }).catch(() => {});
+    if (isCanvasHost(host, document)) send({ type: "SYNC_CANVAS", origin: location.origin }).catch(() => {});
     if (host === "classroom.google.com") watchClassroom();
 
     // ── Behaviour signals (opt-in) ──────────────────────────────────────────────────────

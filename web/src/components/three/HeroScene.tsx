@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, Html, RoundedBox } from "@react-three/drei";
+import { ContactShadows, RoundedBox } from "@react-three/drei";
 import { Caveat } from "next/font/google";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import * as THREE from "three";
@@ -70,10 +70,10 @@ function drawSheet(ctx: CanvasRenderingContext2D, ring: number, family: string) 
 
 const ease = (t: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
 
-function Sheet({ reduced }: { reduced: boolean }) {
+function Sheet({ reduced, onNote }: { reduced: boolean; onNote: (on: boolean) => void }) {
   const group = useRef<THREE.Group>(null);
   const [family, setFamily] = useState<string | null>(null);
-  const [noteOn, setNoteOn] = useState(reduced);
+  const noteOn = useRef<boolean | null>(null);
   // The canvas texture lives in refs: three.js objects are mutated every frame, which React
   // state must never be. It is attached to the material imperatively once fonts are ready.
   const material = useRef<THREE.MeshStandardMaterial>(null);
@@ -114,7 +114,10 @@ function Sheet({ reduced }: { reduced: boolean }) {
       res.texture.needsUpdate = true;
     }
     const show = t > 2.6 && t < 6.8;
-    if (show !== noteOn) setNoteOn(show);
+    if (show !== noteOn.current) {
+      noteOn.current = show;
+      onNote(show);
+    }
     if (group.current) {
       const g = group.current;
       const tx = -0.18 + pointer.y * -0.08;
@@ -127,7 +130,7 @@ function Sheet({ reduced }: { reduced: boolean }) {
   });
 
   const aspect = H / W;
-  const width = 3.2;
+  const width = 2.6;
   return (
     <group ref={group} rotation={[-0.18, 0.32, 0.04]}>
       <RoundedBox args={[width + 0.04, width * aspect + 0.04, 0.03]} radius={0.04} smoothness={4} position={[0, 0, -0.03]}>
@@ -137,21 +140,6 @@ function Sheet({ reduced }: { reduced: boolean }) {
         <planeGeometry args={[width, width * aspect]} />
         <meshStandardMaterial ref={material} color="#ffffff" roughness={0.85} />
       </mesh>
-      <Html position={[width * 0.52, width * aspect * 0.15, 0.05]} transform distanceFactor={4.2} style={{ pointerEvents: "none" }}>
-        <div
-          style={{
-            width: 270,
-            opacity: noteOn ? 1 : 0,
-            transform: `translateX(${noteOn ? 0 : -16}px)`,
-            transition: "opacity 420ms cubic-bezier(0.16,1,0.3,1), transform 520ms cubic-bezier(0.16,1,0.3,1)",
-          }}
-          className="rounded-[14px] border border-line bg-surface p-3.5 text-left shadow-[var(--shadow-lift)]"
-        >
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-danger">Mistake</div>
-          <div className="mt-1 text-[13.5px] leading-5 text-ink">Moving +5 across should give 20 − 5, so 3x = 15.</div>
-          <div className="mt-2 border-l-2 border-ink pl-2 text-[12.5px] leading-[18px] text-ink-2">What do you do to both sides to make the +5 disappear?</div>
-        </div>
-      </Html>
     </group>
   );
 }
@@ -165,13 +153,29 @@ function subscribeReducedMotion(cb: () => void) {
 
 export default function HeroScene() {
   const reduced = useSyncExternalStore(subscribeReducedMotion, () => window.matchMedia(REDUCED).matches, () => false);
+  const [note, setNote] = useState(false);
   return (
-    <Canvas camera={{ position: [0.4, 0.1, 6.2], fov: 38 }} dpr={[1, 2]} frameloop={reduced ? "demand" : "always"} gl={{ antialias: true, alpha: true }} aria-label="A worksheet with a mistake circled and a tutor's note">
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[3, 5, 6]} intensity={1.6} />
-      <directionalLight position={[-4, -2, 3]} intensity={0.35} />
-      <Sheet reduced={reduced} />
-      <ContactShadows position={[0, -2.35, 0]} opacity={0.22} scale={9} blur={2.6} far={4} />
+    <div className="relative h-full w-full">
+    <Canvas flat camera={{ position: [0.55, 0, 6.6], fov: 38 }} dpr={[1, 2]} frameloop={reduced ? "demand" : "always"} gl={{ antialias: true, alpha: true }} aria-label="A worksheet with a mistake circled and a tutor's note">
+      <ambientLight intensity={1.7} />
+      <directionalLight position={[3, 5, 6]} intensity={1.1} />
+      <directionalLight position={[-4, -2, 3]} intensity={0.25} />
+      <Sheet reduced={reduced} onNote={setNote} />
+      <ContactShadows position={[0, -2.1, 0]} opacity={0.22} scale={9} blur={2.6} far={4} />
     </Canvas>
+      <div
+        aria-hidden={!note}
+        style={{
+          opacity: note || reduced ? 1 : 0,
+          transform: `translateY(${note || reduced ? 0 : 10}px)`,
+          transition: "opacity 420ms cubic-bezier(0.16,1,0.3,1), transform 520ms cubic-bezier(0.16,1,0.3,1)",
+        }}
+        className="pointer-events-none absolute right-[2%] top-[30%] w-[260px] rounded-[14px] border border-line bg-surface p-3.5 shadow-[var(--shadow-lift)] sm:right-[4%]"
+      >
+        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-danger">Mistake</div>
+        <div className="mt-1 text-[13.5px] leading-5 text-ink">Moving +5 across should give <span className="whitespace-nowrap">20 − 5</span>, so <span className="whitespace-nowrap">3x = 15</span>.</div>
+        <div className="mt-2 border-l-2 border-ink pl-2 text-[12.5px] leading-[18px] text-ink-2">What do you do to both sides to make the +5 disappear?</div>
+      </div>
+    </div>
   );
 }

@@ -54,13 +54,16 @@ function bySize<T>(items: T[], maxBytes: number): T[][] {
 
 let running: string | null = null;
 
-export async function syncCanvas(host: string, force = false): Promise<LmsSnapshot | null> {
+export async function syncCanvas(origin: string, force = false): Promise<LmsSnapshot | null> {
+  const url = new URL(origin);
+  if (url.protocol !== "https:" && url.hostname !== "localhost") return null;
+  const host = url.host;
   const times = await syncTimes.getValue();
   if (!force && Date.now() - (times[host] ?? 0) < RESYNC_MS) return null;
   if (running === host) return null;
   running = host;
   try {
-    const base = `https://${host}/api/v1`;
+    const base = `${url.origin}/api/v1`;
     const raw = await canvasAll(`${base}/courses?enrollment_state=active&include[]=total_scores&include[]=syllabus_body&per_page=50`, 100);
     const courses = raw.filter((c) => c && c.id && !c.access_restricted_by_date).slice(0, MAX_COURSES);
     const snapshot: LmsSnapshot = { source: "canvas", host, courses: courses.map((c) => mapCanvasCourse(c, host)), assignments: [], materials: [] };

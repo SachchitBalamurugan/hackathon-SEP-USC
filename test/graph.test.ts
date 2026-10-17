@@ -26,3 +26,14 @@ describe("layoutGraph", () => {
     expect(layoutGraph([{ id: "x", group: "g", weight: 1 }], [{ source: "x", target: "nope" }])).toHaveLength(1);
   });
 });
+
+describe("layoutGraph bounds", () => {
+  it("fits every node inside the radius, centred", () => {
+    const g = (n: number, grp: string) => Array.from({ length: n }, (_, i) => ({ id: grp + i, group: grp, weight: 1 }));
+    const many = [...g(30, "A"), ...g(12, "B"), ...g(8, "C")];
+    const p = layoutGraph(many, [{ source: "A0", target: "A1" }], { radius: 6 });
+    for (const n of p) expect(Math.hypot(n.x, n.y, n.z)).toBeLessThanOrEqual(6.001);
+    const mean = p.reduce((a, n) => a + n.x, 0) / p.length;
+    expect(Math.abs(mean)).toBeLessThan(0.01);
+  });
+});

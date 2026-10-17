@@ -37,7 +37,7 @@ function Node({ n, selected, onSelect, onHover }: { n: SkillNode; selected: bool
         }}
       >
         <sphereGeometry args={[r, 32, 32]} />
-        <meshStandardMaterial color={COLOR[n.status] ?? COLOR.unknown} roughness={0.35} metalness={0.05} />
+        <meshStandardMaterial color={COLOR[n.status] ?? COLOR.unknown} roughness={0.55} />
       </mesh>
       {selected && (
         <mesh>
@@ -80,10 +80,10 @@ function Scene({ graph, selected, setSelected }: { graph: SkillGraph; selected: 
 
 export default function SkillsMap({ graph, selected, setSelected }: { graph: SkillGraph; selected: string | null; setSelected: (id: string | null) => void }) {
   return (
-    <Canvas camera={{ position: [0, 2, 14], fov: 42 }} dpr={[1, 2]} onPointerMissed={() => setSelected(null)} aria-label="3D map of your skills">
+    <Canvas flat camera={{ position: [0, 1, 17.5], fov: 42 }} dpr={[1, 2]} onPointerMissed={() => setSelected(null)} aria-label="3D map of your skills">
       <color attach="background" args={["#ffffff"]} />
-      <hemisphereLight args={["#ffffff", "#e9e7e1", 1.1]} />
-      <directionalLight position={[6, 8, 6]} intensity={1.4} />
+      <ambientLight intensity={1.15} />
+      <directionalLight position={[6, 8, 6]} intensity={0.9} />
       <Scene graph={graph} selected={selected} setSelected={setSelected} />
       <OrbitControls enablePan={false} minDistance={6} maxDistance={26} enableDamping />
     </Canvas>

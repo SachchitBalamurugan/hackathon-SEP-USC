@@ -56,7 +56,7 @@ export function layoutGraph(nodes: GraphNode[], links: GraphLink[], opts: { iter
         const dy = pos[i].y - pos[j].y;
         const dz = pos[i].z - pos[j].z;
         const d2 = dx * dx + dy * dy + dz * dz + 0.01;
-        const rep = 1.6 / d2;
+        const rep = 0.7 / d2;
         f[i].x += dx * rep;
         f[i].y += dy * rep;
         f[i].z += dz * rep;
@@ -80,14 +80,27 @@ export function layoutGraph(nodes: GraphNode[], links: GraphLink[], opts: { iter
     }
     sorted.forEach((n, i) => {
       const c = centres.get(n.group)!;
-      f[i].x += (c.x - pos[i].x) * 0.04;
-      f[i].y += (c.y - pos[i].y) * 0.04;
-      f[i].z += (c.z - pos[i].z) * 0.04;
+      f[i].x += (c.x - pos[i].x) * 0.09;
+      f[i].y += (c.y - pos[i].y) * 0.09;
+      f[i].z += (c.z - pos[i].z) * 0.09;
       const step = 0.5 * cool;
       pos[i].x += Math.max(-1, Math.min(1, f[i].x)) * step;
       pos[i].y += Math.max(-1, Math.min(1, f[i].y)) * step;
       pos[i].z += Math.max(-1, Math.min(1, f[i].z)) * step;
     });
+  }
+  // Recentre and fit inside the target radius, so the camera always frames the whole map
+  // however many skills there are.
+  const n = pos.length;
+  const cx = pos.reduce((a, p) => a + p.x, 0) / n;
+  const cy = pos.reduce((a, p) => a + p.y, 0) / n;
+  const cz = pos.reduce((a, p) => a + p.z, 0) / n;
+  const maxR = Math.max(1e-6, ...pos.map((p) => Math.hypot(p.x - cx, p.y - cy, p.z - cz)));
+  const scale = n === 1 ? 0 : Math.min(1.6, R / maxR);
+  for (const p of pos) {
+    p.x = (p.x - cx) * scale;
+    p.y = (p.y - cy) * scale;
+    p.z = (p.z - cz) * scale;
   }
   const round = (v: number) => Math.round(v * 1000) / 1000;
   return sorted.map((n, i) => ({ id: n.id, x: round(pos[i].x), y: round(pos[i].y), z: round(pos[i].z) }));

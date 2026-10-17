@@ -62,7 +62,7 @@ export function PrivacyControls({ initialEnabled, initialPaused }: { initialEnab
   );
 }
 
-PrivacyControls.Delete = function DeleteData() {
+export function DeleteData() {
   const [state, setState] = useState<"idle" | "confirm" | "done">("idle");
   if (state === "done") return <span className="self-center text-[14px] text-good">Everything was deleted.</span>;
   return (
@@ -84,4 +84,4 @@ PrivacyControls.Delete = function DeleteData() {
       )}
     </>
   );
-};
+}

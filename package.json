@@ -4,7 +4,8 @@
   "workspaces": [
     "web",
     "extension",
-    "packages/*"
+    "packages/*",
+    "demo"
   ],
   "scripts": {
     "dev:web": "npm --workspace web run dev",
