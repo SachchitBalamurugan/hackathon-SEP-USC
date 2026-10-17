@@ -46,7 +46,7 @@ if (!empty) {
     ["cause and effect in historical events", "World History", [true, true, false, true]],
     ["evaluating primary sources", "World History", [true, true, true, true]],
   ];
-  const demos = [];
+  const demos: Record<string, unknown>[] = [];
   const now = Date.now();
   for (const [skill, , history] of SKILLS) {
     history.forEach((correct, i) => {

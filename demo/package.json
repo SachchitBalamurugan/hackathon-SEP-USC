@@ -6,7 +6,8 @@
     "seed": "tsx seed.ts",
     "record": "tsx record.ts",
     "studio": "remotion studio remotion/index.ts",
-    "render": "tsx render.ts"
+    "render": "tsx render.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.536",
@@ -15,7 +16,12 @@
     "@supabase/supabase-js": "^2.118.0",
     "pg": "^8.23.1",
     "playwright": "^1.64.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "remotion": "^4.0.536",
     "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/react": "^19"
   }
 }

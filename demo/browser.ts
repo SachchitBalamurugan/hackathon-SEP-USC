@@ -3,6 +3,9 @@ import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import { DEMO_EMAIL, DEMO_PASSWORD, ROOT, SITE, sleep } from "./lib";
 
+// The extension worker's global, as seen from sw.evaluate().
+declare const chrome: { storage: { local: { set(items: Record<string, unknown>): Promise<void> } } };
+
 export const VIEWPORT = { width: 1440, height: 900 };
 
 export async function launch(opts: { videoDir?: string; paired?: boolean } = {}) {

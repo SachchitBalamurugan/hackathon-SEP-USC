@@ -83,3 +83,16 @@ npm test               # unit tests: core logic, expression parser, MCP protocol
 npm run eval:check     # live vision eval over eval/fixtures (spends API credits)
 npm --workspace web run typecheck && npm --workspace extension run typecheck
 ```
+
+### Demo videos
+
+The videos on the landing page and in each "How this works" dialog come from `demo/`:
+
+```bash
+DEMO_MODE=1 npx --workspace web next dev -p 3100   # staged Canvas API on, in another terminal
+npm -w demo run record                             # seeds the demo account, records out/raw/<scene>.webm + cues
+npm -w demo run render                             # Remotion -> web/public/demos/<key>.mp4/.webm/.jpg
+npm -w demo run studio                             # preview and tweak the compositions
+```
+
+`intro`, `learning` and `claude` are drawn entirely in Remotion and render without a backend. The other six wrap a screen recording and are skipped until it exists. Set `REMOTION_BROWSER` to an existing headless Chrome to skip Remotion's download.
