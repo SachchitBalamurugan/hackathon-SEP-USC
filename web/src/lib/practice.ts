@@ -134,7 +134,8 @@ async function maybeResolveMistake(userId: string, mistakeId: string) {
     .not("last_result", "is", null)
     .order("created_at", { ascending: false })
     .limit(2);
-  const rightTwice = (data ?? []).length === 2 && data!.every((r: any) => r.last_result?.correct);
+  const rows = (data ?? []) as { last_result: { correct?: boolean } | null }[];
+  const rightTwice = rows.length === 2 && rows.every((r) => r.last_result?.correct === true);
   if (rightTwice) await db().from("mistakes").update({ resolved_at: new Date().toISOString() }).eq("id", mistakeId).eq("user_id", userId);
 }
 
@@ -148,8 +149,9 @@ export async function duePractice(userId: string, limit = 10): Promise<PublicPra
     .order("created_at", { ascending: false })
     .limit(200);
   const now = Date.now();
-  return (data ?? [])
-    .filter((r: any) => !r.srs || Date.parse(r.srs.dueAt) <= now)
+  type Row = Parameters<typeof toPublic>[0] & { srs: Partial<SrsState> | null };
+  return ((data ?? []) as Row[])
+    .filter((r) => !r.srs?.dueAt || Date.parse(r.srs.dueAt) <= now)
     .slice(0, limit)
     .map(toPublic);
 }

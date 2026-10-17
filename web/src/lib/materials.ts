@@ -129,5 +129,6 @@ export async function searchMaterials(userId: string, query: string, k = 6): Pro
     console.error("search_material_chunks", error);
     return [];
   }
-  return (data ?? []).map((r: any) => ({ text: r.text, materialId: r.material_id, score: r.score }));
+  const rows = (data ?? []) as { text: string; material_id: string; score: number }[];
+  return rows.map((r) => ({ text: r.text, materialId: r.material_id, score: r.score }));
 }

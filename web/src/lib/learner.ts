@@ -61,7 +61,18 @@ export async function getProfile(userId: string) {
   return data ?? { mind_doc: "", traits: {}, version: 0, updated_at: null };
 }
 
-export async function getUpcoming(userId: string, days = 14) {
+export type UpcomingAssignment = {
+  id: string;
+  title: string;
+  due_at: string | null;
+  points_possible: number | null;
+  score: number | null;
+  missing: boolean;
+  url: string | null;
+  courses: { name: string } | null;
+};
+
+export async function getUpcoming(userId: string, days = 14): Promise<UpcomingAssignment[]> {
   const now = new Date();
   const until = new Date(now.getTime() + days * 86_400_000);
   const { data } = await db()
@@ -73,7 +84,7 @@ export async function getUpcoming(userId: string, days = 14) {
     .is("submitted_at", null)
     .order("due_at", { ascending: true })
     .limit(30);
-  return data ?? [];
+  return (data ?? []) as unknown as UpcomingAssignment[];
 }
 
 export async function getOpenMistakes(userId: string, limit = 15) {
@@ -100,7 +111,7 @@ export async function learnerContext(userId: string): Promise<string> {
     strong.length ? `Solid skills: ${strong.map((m) => m.label).join("; ")}` : "",
     mistakes.length ? `Recent mistakes:\n${mistakes.map((m) => `- [${m.skill_label}] ${m.note}${m.misconception ? ` (belief: ${m.misconception})` : ""}`).join("\n")}` : "",
     upcoming.length
-      ? `Due soon:\n${upcoming.map((a: any) => `- ${a.title}${a.courses?.name ? ` (${a.courses.name})` : ""}, due ${a.due_at?.slice(0, 10)}${a.missing ? ", MISSING" : ""}`).join("\n")}`
+      ? `Due soon:\n${upcoming.map((a) => `- ${a.title}${a.courses?.name ? ` (${a.courses.name})` : ""}, due ${a.due_at?.slice(0, 10)}${a.missing ? ", MISSING" : ""}`).join("\n")}`
       : "",
   ];
   return fence("learner-model", lines.filter(Boolean).join("\n"));
