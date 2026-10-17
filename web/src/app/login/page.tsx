@@ -5,7 +5,7 @@ export default async function Login({ searchParams }: PageProps<"/login">) {
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-16">
       <h1 className="text-2xl font-semibold">Sign in to StudyLens</h1>
-      <p className="mt-1 text-sm text-muted">New here? Enter an email and password, then choose Create account.</p>
+      <p className="mt-1 text-sm text-muted">New here? Enter an email and a password, then choose Create account. You&apos;ll be signed in right away.</p>
       <form className="mt-6 flex flex-col gap-3">
         <input className="input" name="email" type="email" placeholder="you@school.edu" required autoComplete="email" />
         <input className="input" name="password" type="password" placeholder="Password (8+ characters)" minLength={8} required autoComplete="current-password" />
