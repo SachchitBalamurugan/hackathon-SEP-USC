@@ -143,7 +143,7 @@ npm run dev:web                      # http://localhost:3000
 ### 3. Extension
 
 ```bash
-cp extension/.env.example extension/.env   # WXT_API_BASE=http://localhost:3000 (or your Vercel URL)
+cp extension/.env.example extension/.env   # WXT_API_BASE=http://localhost:3000 (or https://studylens-two.vercel.app)
 npm run dev:ext                            # opens Chrome with the extension loaded
 # or: npm --workspace extension run build, then load extension/.output/chrome-mv3 unpacked
 ```
@@ -162,7 +162,7 @@ On **Connect**, create an MCP key. Then use one of these:
 
 ### 5. Deploy to Vercel
 
-Import the repo with Root Directory `web`, add the variables from `web/.env.example` (including a random `CRON_SECRET`), and deploy. `web/vercel.json` schedules the daily consolidation. Rebuild the extension with `WXT_API_BASE` set to the deployed URL.
+Import the repo with Root Directory `web`, add the variables from `web/.env.example` (including a random `CRON_SECRET`), and deploy (ours is live at https://studylens-two.vercel.app/). `web/vercel.json` schedules the daily consolidation. Rebuild the extension with `WXT_API_BASE` set to the deployed URL.
 
 ## Using it
 
