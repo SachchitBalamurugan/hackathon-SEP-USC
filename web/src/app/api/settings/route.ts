@@ -11,7 +11,10 @@ const schema = z.object({
 
 export const POST = route(["extension", "session"], async (req, { userId }) => {
   const patch = await body(req, schema);
-  const { data, error } = await db().from("profiles").update(patch).eq("id", userId).select("tracking_enabled, paused_hosts, auto_check_hosts").single();
+  const cols = "tracking_enabled, paused_hosts, auto_check_hosts";
+  // An empty patch is a read; profiles rows are created by the signup trigger.
+  const q = Object.keys(patch).length ? db().from("profiles").update(patch).eq("id", userId).select(cols) : db().from("profiles").select(cols).eq("id", userId);
+  const { data, error } = await q.single();
   if (error) throw error;
   return json(req, data);
 });

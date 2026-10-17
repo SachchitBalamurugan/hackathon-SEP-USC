@@ -2,6 +2,8 @@
   "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    // Match packages/core and web, which are written without unchecked-index typing.
+    "noUncheckedIndexedAccess": false
   }
 }

@@ -1,69 +1,28 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+  --ink: #1b1b1f;
+  --muted: #6b6b75;
+  --line: #e4e4e0;
+  --accent: #4f46e5;
+  --bad: #dc2626;
+  --bg: #ffffff;
 }
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+@media (prefers-color-scheme: dark) {
+  :root { --ink: #ececf1; --muted: #9a9aa6; --line: #33333b; --accent: #8b85ff; --bad: #f87171; --bg: #1a1a1f; }
 }
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
+body { margin: 0; width: 320px; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
+.p { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+h1 { font-size: 16px; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent); }
+.muted { color: var(--muted); font-size: 13px; }
+.block { display: block; font-size: 12px; margin-top: 2px; }
+.error { color: var(--bad); font-size: 13px; }
+form { display: flex; gap: 8px; }
+input:not([type]) , input[type="text"] { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; letter-spacing: 0.15em; background: transparent; color: inherit; }
+button { border: none; border-radius: 8px; padding: 8px 14px; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
+button:disabled { opacity: 0.5; }
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.row { display: flex; gap: 10px; align-items: flex-start; }
+.row input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); }
+.space { justify-content: space-between; align-items: center; }
