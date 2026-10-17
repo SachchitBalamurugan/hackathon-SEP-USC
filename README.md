@@ -1,6 +1,87 @@
 # StudyLens
 
-A browser extension and a Claude connector for students. It syncs your courses from Canvas and Google Classroom, checks your work on any page (Kami, PDFs, Google Docs, online problem sets), marks mistakes in an overlay, explains with animated steps, graphs and diagrams, writes practice problems aimed at the misconception behind each mistake, and keeps a learner model that improves from three sources: course updates, what Claude learns in conversation, and how you use StudyLens.
+**Feedback while you work, not after the grade.** A browser extension and Claude connector that checks a student's homework on any page, teaches instead of telling, and builds a learner model that keeps getting better the more they use it.
+
+## Team
+
+- **Sachchit Balamurugan**
+- **Philip Baker**
+
+## Summary
+
+**Problem.** Students use AI on almost everything: in 2026, 95% of UK undergraduates use AI and 94% use it on assessed work (HEPI 2026). But answers aren't learning. In a PNAS study of nearly a thousand students, those who practised with plain ChatGPT scored 17% worse once it was taken away; a tutor that hinted instead of answering avoided the drop (PNAS 2025). General chatbots also forget the student between conversations and know nothing about their courses.
+
+**Solution.** StudyLens sits on top of the work students already do (Kami, PDFs, Google Docs, online problem sets):
+
+- **Check my work:** one click screenshots the page, a vision model diagnoses the work, and the overlay circles mistakes in red, good steps in green, and handwriting it can't read in amber (it asks instead of guessing). It names the *belief* behind the error and asks one question rather than giving the answer.
+- **Explain:** streamed explanations with steps, graphs and diagrams drawn on a whiteboard.
+- **Practice:** problems aimed at the exact misconception, graded on the server (answer keys never reach the browser), spaced with SM-2 so they return before you forget.
+- **A learner model** fed by three sources: course updates synced from Canvas and Google Classroom, what Claude learns in conversation (through our MCP connector), and how the student uses StudyLens.
+- **Claude mode:** with no API key, the student's own Claude does the thinking through the connector, so StudyLens costs almost nothing to run per student.
+
+Demo videos: a 2-minute pitch and a 3-minute live walkthrough (recordings of the real site, extension and MCP tools with a demo student's data). The setup walkthrough is also on the **Setup guide** page of the dashboard.
+
+## How we addressed each track
+
+### Grand Tech: Continual Learning
+
+*Does it get better the more people use it? Is learning core?*
+
+Learning is the product, not an add-on. Every check, practice answer, course sync and Claude observation lands in one append-only evidence log, `learner_events`.
+
+- **Memory that stays honest:** skill mastery is recomputed on every read from `skill_demos` with a 14-day half-life, so stale wins fade and nothing drifts (`packages/core/src/mastery.ts`).
+- **Consolidation:** every 25 events (and daily), `consolidate()` folds the log into structured traits and rewrites a short profile the tutor reads before teaching. Writes use an optimistic version check, so a student's own edit is never overwritten (`web/src/lib/learner.ts`).
+- **Closed loop:** mistakes drive practice; practice results update mastery and SM-2 scheduling (`packages/core/src/srs.ts`); two correct answers in a row resolve the mistake. Claude reads the profile before teaching and writes back what it learns (`record_observation`, `log_learning_event`, `update_profile` in `web/src/lib/mcp.ts`).
+- **A product that never learns couldn't do this:** a stateless checker can't tell "Maya always drops the sign when moving a term" from a one-off slip, can't time a review before she'd forget, and can't brief Claude on her before a session.
+- **Getting better with more students (in progress):** every mark a student flags as wrong and every disputed grade is already recorded as a labelled example (`agent_runs`, `observed = true`). Next we cluster these into a shared misconception library and re-test the checker on them before any prompt or verifier change ships.
+
+### Design: Best Visual Design
+
+*Purpose clear at a glance, consistent identity, complex made simple, makes you come back.*
+
+- **One click, three colours:** the overlay turns a whole tutoring session into red, green and amber marks on the student's own page, with one question to answer (`extension/components/MarksLayer.tsx`, `App.tsx`).
+- **A consistent identity:** ink-on-white with a single blue accent, shared by the dashboard, the extension's shadow-DOM overlay and the demo videos.
+- **Visual explanations:** a whiteboard renders steps, graphs and diagrams from validated draw operations (`extension/components/DrawView.tsx`, `packages/core/src/draw.ts`).
+- **Reasons to come back:** a 3D skills map that turns green as you improve (`web/src/components/three/SkillsMap.tsx`), spaced reviews that come back on schedule, and an onboarding checklist plus Setup guide with a walkthrough video.
+
+### Agents: Agent Behavior Monitoring
+
+*What counts as failure, how the agent notices, guardrails and retries, reliability at scale.*
+
+- **Failure, defined:** wrong feedback is the failure we design against. `packages/core/src/monitor.ts` lists every violation by severity: hard (timeout, refusal, schema mismatch, truncation), semantic (a summary saying "no mistakes" over red marks, duplicate or zero-size marks, a multiple-choice answer missing from its own options, an answer leaked in its question, a grade that contradicts its score, an over-long profile) and behavioural (a student flagging a mark or disputing a grade).
+- **Noticing on its own:** every model step (check, refine, practice generation, grading, explanation, consolidation) runs through `watch()` in `web/src/lib/watchdog.ts`, which runs the verifiers on the output before the student sees it.
+- **Guardrails and retries:** repairable problems get one retry with a written critique; whatever is left is patched (duplicates dropped, contradicting summaries rewritten) or dropped (unanswerable questions). Grade contradictions are settled deterministically. Unsure readings are marked amber and phrased as a question.
+- **Reliability over time:** every run is logged to `agent_runs` with outcome, violations and latency. A per-pipeline circuit breaker skips the extra calls when more than 30% of recent runs fail, and the dashboard's Privacy page shows the student a 30-day "Tutor self-checks" summary. Claude's output in Claude mode passes the same verifiers.
+- Tests: `test/monitor.test.ts`, `test/watchdog.test.ts`.
+
+### Scale: Most Scalable to $1B
+
+*Real problem, large market, path to a billion, would someone pay, why now.*
+
+- **Market:** about 19 million US college students, and most already use AI for school. The same need exists in high school and internationally.
+- **Why now:** AI made answers free. The next winner sells understanding, and the research above shows the difference is how the AI is designed.
+- **Path:** students first (free trial, then a monthly plan), then schools and districts (site licences, with class-level insights planned), then every learner. The extension works on any homework page, so there is no per-platform integration to sell.
+- **Unit economics:** in Claude mode the AI runs on the student's own Claude, so we never mark up usage and serving cost per student stays near zero. Course sync uses the student's own session, so no school integration is needed to start.
+- **Moat:** the learner model and the labelled-mistake data compound with every student.
+
+## Where to look (key files)
+
+| Area | Files |
+|---|---|
+| Learner model and memory | `web/src/lib/learner.ts`, `packages/core/src/mastery.ts`, `packages/core/src/srs.ts`, `packages/core/src/lms/diff.ts` |
+| Agent monitoring | `packages/core/src/monitor.ts`, `web/src/lib/watchdog.ts`, `supabase/migrations/20261017000000_agent_runs.sql` |
+| Check my work | `web/src/lib/check.ts`, `packages/core/src/markup.ts`, `extension/components/App.tsx`, `extension/components/MarksLayer.tsx` |
+| Claude connector (MCP) and Claude mode | `web/src/lib/mcp.ts`, `web/src/lib/claudeTasks.ts` |
+| Dashboard | `web/src/app/dashboard/`, `web/src/components/three/SkillsMap.tsx` |
+| Tests | `test/monitor.test.ts`, `test/watchdog.test.ts`, `test/mcp.test.ts`, `test/core.test.ts` |
+
+Built with Next.js on Vercel, Supabase (Postgres + pgvector), a WXT Manifest V3 extension, Claude (vision, explanations, grading, memory), and the Model Context Protocol.
+
+---
+
+The rest of this README is the technical reference: how it works, setup, and development.
+
+## Architecture
 
 The infrastructure is adapted from FschoolAI: session-based LMS scraping, pairing codes, the check-my-work prompt, the draw-op vocabulary, the stream fence splitter, SM-2 and decaying skill memory.
 
