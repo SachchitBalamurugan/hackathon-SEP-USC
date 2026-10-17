@@ -1,8 +1,23 @@
 import "server-only";
-import { CHECK_WORK_PROMPT, checkResultSchema, clampMarks, fromWindow, refinePrompt, refineResultSchema, refineWindow, skillKey, type CheckResult, type Mark } from "@studylens/core";
+import {
+  CHECK_WORK_PROMPT,
+  checkResultSchema,
+  clampMarks,
+  fromWindow,
+  refinePrompt,
+  refineResultSchema,
+  refineWindow,
+  skillKey,
+  verifyCheck,
+  verifyRefine,
+  type CheckResult,
+  type Mark,
+  type Violation,
+} from "@studylens/core";
 import { db } from "./supabase";
 import { parseStructured, UNTRUSTED_RULE } from "./llm";
 import { learnerContext, recordDemo, recordEvents } from "./learner";
+import { watch, withCritique, type Content } from "./watchdog";
 
 // Check my work: one vision pass to find and diagnose mistakes, then a zoomed refine pass per
 // error to tighten its position. FschoolAI measured first-pass positions off by up to 22% of
@@ -19,38 +34,58 @@ const SYSTEM = `${CHECK_WORK_PROMPT}\n\n${UNTRUSTED_RULE} Text visible in the sc
 
 export async function checkWork(userId: string, input: CheckInput): Promise<CheckResult> {
   const context = await learnerContext(userId);
-  const result = await parseStructured({
-    system: SYSTEM,
-    schema: checkResultSchema,
-    effort: "medium",
-    maxTokens: 12000,
-    content: [
-      { type: "image", source: { type: "base64", media_type: input.mediaType, data: input.image } },
-      { type: "text", text: `${context}\n\nCheck the work visible on this screen (${input.host}).` },
-    ],
+  const content: Content = [
+    { type: "image", source: { type: "base64", media_type: input.mediaType, data: input.image } },
+    { type: "text", text: `${context}\n\nCheck the work visible on this screen (${input.host}).` },
+  ];
+  const ask = (c: Content) => parseStructured({ system: SYSTEM, schema: checkResultSchema, effort: "medium", maxTokens: 12000, content: c });
+
+  const out = await watch(userId, "check", async (run) => {
+    const verify = (r: CheckResult) => verifyCheck({ ...r, marks: clampMarks(r.marks) }, r.marks.length);
+    const result = await run.repair(await ask(content), verify, (note, prev) => ask(withCritique(content, prev, note)));
+    return patchCheck({ ...result, marks: clampMarks(result.marks) }, verify(result));
   });
-  const marks = clampMarks(result.marks);
-  const out = { ...result, marks };
   await recordCheck(userId, out, input.host);
   return out;
 }
 
+/** Fix what the verifiers still found: drop duplicate and empty marks, and a contradicting summary. */
+export function patchCheck(r: CheckResult, vs: Violation[]): CheckResult {
+  const drop = new Set(vs.filter((v) => (v.code === "mark_duplicate" || v.code === "mark_zero_area") && v.index !== undefined).map((v) => v.index!));
+  const marks = r.marks
+    .filter((_, i) => !drop.has(i))
+    .map((m) => (m.kind === "error" && !m.note.trim() ? { ...m, note: m.misconception.trim().slice(0, 100) || "Take another look at this step." } : m));
+  const errors = marks.filter((m) => m.kind === "error").length;
+  const summary = vs.some((v) => v.code === "summary_contradicts_marks")
+    ? `I found ${errors} thing${errors === 1 ? "" : "s"} to look at again. Start with the circled step.`
+    : r.summary;
+  return { ...r, summary, marks };
+}
+
 /** Refine one mark using a crop the client cut from the original screenshot around refineWindow(mark). */
-export async function refineMark(mark: Mark, crop: { image: string; mediaType: "image/png" | "image/jpeg" }): Promise<Mark> {
+export async function refineMark(userId: string, mark: Mark, crop: { image: string; mediaType: "image/png" | "image/jpeg" }): Promise<Mark> {
   const win = refineWindow(mark);
   try {
-    const r = await parseStructured({
-      system: "You locate a specific detail in a crop of a student's work. Be precise.",
-      schema: refineResultSchema,
-      effort: "low",
-      maxTokens: 2000,
-      content: [
-        { type: "image", source: { type: "base64", media_type: crop.mediaType, data: crop.image } },
-        { type: "text", text: refinePrompt(mark.note) },
-      ],
+    return await watch(userId, "refine", async (run) => {
+      // An open breaker means refines have been failing: keep the first-pass position. These
+      // skipped runs log as ok, so the breaker closes again after a window and refines resume.
+      if (run.degradedMode) return mark;
+      const r = await parseStructured({
+        system: "You locate a specific detail in a crop of a student's work. Be precise.",
+        schema: refineResultSchema,
+        effort: "low",
+        maxTokens: 2000,
+        content: [
+          { type: "image", source: { type: "base64", media_type: crop.mediaType, data: crop.image } },
+          { type: "text", text: refinePrompt(mark.note) },
+        ],
+      });
+      const refined = r.found ? { ...mark, ...fromWindow(win, r) } : null;
+      const vs = verifyRefine(mark, refined);
+      run.saw(vs);
+      // Not found, or a jump far enough that the crop probably matched something else.
+      return refined && !vs.length ? refined : mark;
     });
-    if (!r.found) return mark;
-    return { ...mark, ...fromWindow(win, r) };
   } catch {
     return mark;
   }

@@ -1,10 +1,11 @@
 import "server-only";
 import { z } from "zod";
-import { gradeFromScore, sm2, skillKey, type SrsState } from "@studylens/core";
+import { compileExpr, gradeFromScore, resolveGrade, sm2, skillKey, verifyGrade, verifyPractice, type SrsState, type Violation } from "@studylens/core";
 import { db } from "./supabase";
 import { parseStructured, fence, UNTRUSTED_RULE } from "./llm";
 import { getMastery, getOpenMistakes, learnerContext, recordDemo, recordEvents } from "./learner";
 import { searchMaterials } from "./materials";
+import { observe, watch, withCritique, type Content } from "./watchdog";
 
 // Practice problems: generated from the student's open mistakes, weak skills and their own
 // course materials, using FschoolAI's api/exam.ts question shape. The answer key never leaves
@@ -48,19 +49,23 @@ export async function generatePractice(userId: string, opts: { skill?: string; m
     opts.skill || opts.topic || target[0]?.skill_label || mastery.find((m) => m.status === "shaky" || m.level < 0.6)?.label || "a recent topic from their courses";
   const materials = await searchMaterials(userId, focus, 4);
 
-  const out = await parseStructured({
-    system: GEN_SYSTEM,
-    schema: genSchema,
-    effort: "medium",
-    content: [
-      context,
-      `Focus: ${focus}`,
-      target.length ? `Mistakes to target:\n${fence("mistakes", target.slice(0, 5).map((m) => `- [${m.skill_label}] ${m.note}${m.misconception ? ` (belief: ${m.misconception})` : ""}`).join("\n"))}` : "",
-      materials.length ? `Course materials:\n${fence("materials", materials.map((m) => m.text).join("\n---\n"))}` : "",
-      `Write exactly ${count} questions.`,
-    ]
-      .filter(Boolean)
-      .join("\n\n"),
+  const content = [
+    context,
+    `Focus: ${focus}`,
+    target.length ? `Mistakes to target:\n${fence("mistakes", target.slice(0, 5).map((m) => `- [${m.skill_label}] ${m.note}${m.misconception ? ` (belief: ${m.misconception})` : ""}`).join("\n"))}` : "",
+    materials.length ? `Course materials:\n${fence("materials", materials.map((m) => m.text).join("\n---\n"))}` : "",
+    `Write exactly ${count} questions.`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const ask = (c: Content) => parseStructured({ system: GEN_SYSTEM, schema: genSchema, effort: "medium", content: c });
+
+  const out = await watch(userId, "practice_generate", async (run) => {
+    const verify = (g: z.infer<typeof genSchema>) => verifyPractice(g.questions, count);
+    const g = await run.repair(await ask(content), verify, (note, prev) => ask(withCritique(content, prev, note)));
+    const questions = patchPractice(g.questions, verify(g));
+    if (!questions.length) throw new Error("No usable practice questions after verification");
+    return { questions };
   });
 
   const rows = out.questions.slice(0, count).map((q) => ({
@@ -77,6 +82,15 @@ export async function generatePractice(userId: string, opts: { skill?: string; m
   const { data, error } = await db().from("practice_items").insert(rows).select("id, skill_label, question, qtype, options");
   if (error) throw error;
   return (data ?? []).map(toPublic);
+}
+
+/** Drop questions a student could not answer correctly as written; strip options from short answers. */
+export function patchPractice<Q extends { type: string; options: string[] }>(qs: Q[], vs: Violation[]): Q[] {
+  const broken = new Set(
+    vs.filter((v) => v.index !== undefined && ["mc_answer_not_in_options", "mc_duplicate_options", "answer_leaked"].includes(v.code)).map((v) => v.index!),
+  );
+  const stripped = new Set(vs.filter((v) => v.code === "short_answer_has_options").map((v) => v.index));
+  return qs.flatMap((q, i) => (broken.has(i) ? [] : [stripped.has(i) ? { ...q, options: [] } : q]));
 }
 
 const toPublic = (r: { id: string; skill_label: string; question: string; qtype: string; options: string[] | null }): PublicPractice => ({
@@ -104,11 +118,20 @@ export async function gradePractice(userId: string, itemId: string, answer: stri
   if (item.qtype === "multiple_choice") {
     result = { correct: exact, score: exact ? 1 : 0, feedback: exact ? "Correct." : `Not quite. The answer is ${item.answer}.` };
   } else {
-    result = await parseStructured({
-      system: GRADE_SYSTEM,
-      schema: gradeSchema,
-      effort: "low",
-      content: `Question: ${item.question}\nAnswer key: ${item.answer}\n${fence("student-answer", answer.slice(0, 2000))}`,
+    result = await watch(userId, "practice_grade", async (run) => {
+      const g = await parseStructured({
+        system: GRADE_SYSTEM,
+        schema: gradeSchema,
+        effort: "low",
+        content: `Question: ${item.question}\nAnswer key: ${item.answer}\n${fence("student-answer", answer.slice(0, 2000))}`,
+      });
+      const vs = verifyGrade(g);
+      run.saw(vs);
+      let fixed = g;
+      // A grade that contradicts itself is settled deterministically, never by asking again.
+      if (vs.some((v) => v.code === "grade_contradiction")) fixed = { ...fixed, ...resolveGrade(g, answer, item.answer, evalNumber) };
+      if (!fixed.feedback.trim()) fixed = { ...fixed, feedback: fixed.correct ? "Correct." : `Not quite. Compare your answer with ${item.answer}.` };
+      return fixed;
     });
   }
   const score = Math.min(1, Math.max(0, result.score));
@@ -125,6 +148,21 @@ export async function gradePractice(userId: string, itemId: string, answer: stri
   return { ...result, score, explanation: item.explanation, answer: item.answer, nextReview: srs.dueAt };
 }
 
+/**
+ * "I think I was right": logged for the watchdog as a disputed grade. It does not change the
+ * grade or the student's mastery; a student's own say-so is a signal to review grading, not proof.
+ */
+export async function disputeGrade(userId: string, itemId: string) {
+  const { data: item } = await db().from("practice_items").select("skill_label, qtype, last_result").eq("id", itemId).eq("user_id", userId).maybeSingle();
+  const last = item?.last_result as { correct?: boolean; disputed?: boolean } | null;
+  if (!item || !last || last.correct !== false) return null;
+  if (!last.disputed) {
+    await db().from("practice_items").update({ last_result: { ...last, disputed: true } }).eq("id", itemId).eq("user_id", userId);
+    observe(userId, "practice_grade", "user_disputed_grade", `student disputed a ${item.qtype} grade on ${item.skill_label}`.slice(0, 200));
+  }
+  return { ok: true };
+}
+
 async function maybeResolveMistake(userId: string, mistakeId: string) {
   const { data } = await db()
     .from("practice_items")
@@ -137,6 +175,18 @@ async function maybeResolveMistake(userId: string, mistakeId: string) {
   const rows = (data ?? []) as { last_result: { correct?: boolean } | null }[];
   const rightTwice = rows.length === 2 && rows.every((r) => r.last_result?.correct === true);
   if (rightTwice) await db().from("mistakes").update({ resolved_at: new Date().toISOString() }).eq("id", mistakeId).eq("user_id", userId);
+}
+
+/** A plain numeric answer ("3/4", "-2.5", "2^3") as a number, or null for anything else. */
+function evalNumber(s: string): number | null {
+  const t = s.trim().replace(/^[a-z]\s*=\s*/i, "");
+  if (!t || /[a-z]/i.test(t)) return null;
+  try {
+    const n = compileExpr(t)(0);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
 }
 
 const normalise = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.]$/, "");

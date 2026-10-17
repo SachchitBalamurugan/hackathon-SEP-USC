@@ -33,6 +33,13 @@ export class RefusalError extends Error {
   }
 }
 
+/** Structured output that could not be parsed; stopReason "max_tokens" means it was cut off. */
+export class SchemaError extends Error {
+  constructor(public stopReason: string | null) {
+    super(`Model output did not match the schema (stop_reason: ${stopReason})`);
+  }
+}
+
 type Effort = "low" | "medium" | "high";
 
 type ParseArgs<S extends z.ZodType> = {
@@ -56,12 +63,18 @@ export async function parseStructured<S extends z.ZodType>(args: ParseArgs<S>): 
     ...withFallback(model),
   });
   if (response.stop_reason === "refusal") throw new RefusalError(response.stop_details?.category ?? null);
-  if (response.parsed_output == null) throw new Error(`Model output did not match the schema (stop_reason: ${response.stop_reason})`);
+  if (response.parsed_output == null) throw new SchemaError(response.stop_reason);
   return response.parsed_output as z.infer<S>;
 }
 
 /** Stream prose. Yields text deltas; the caller splits out ```draw fences. */
-export async function* streamText(args: { system: string; messages: Anthropic.Beta.BetaMessageParam[]; effort?: Effort; maxTokens?: number }) {
+export async function* streamText(args: {
+  system: string;
+  messages: Anthropic.Beta.BetaMessageParam[];
+  effort?: Effort;
+  maxTokens?: number;
+  onFinish?: (stopReason: string | null) => void;
+}) {
   const stream = anthropic().beta.messages.stream({
     model: MODELS.tutor,
     max_tokens: args.maxTokens ?? 16000,
@@ -74,6 +87,7 @@ export async function* streamText(args: { system: string; messages: Anthropic.Be
     if (event.type === "content_block_delta" && event.delta.type === "text_delta") yield event.delta.text;
   }
   const final = await stream.finalMessage();
+  args.onFinish?.(final.stop_reason);
   if (final.stop_reason === "refusal") throw new RefusalError(final.stop_details?.category ?? null);
 }
 

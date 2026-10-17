@@ -27,7 +27,7 @@ const schema = z.discriminatedUnion("action", [
 export const POST = route(["extension"], async (req, { userId }) => {
   const input = await body(req, schema);
   if (input.action === "check") return json(req, await checkWork(userId, input));
-  return json(req, { mark: await refineMark(input.mark, { image: input.crop, mediaType: input.mediaType }) });
+  return json(req, { mark: await refineMark(userId, input.mark, { image: input.crop, mediaType: input.mediaType }) });
 });
 
 export { OPTIONS };

@@ -46,6 +46,7 @@ function PracticeItem({ n, item }: { n: number; item: Item }) {
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
+  const [disputed, setDisputed] = useState(false);
   const [start] = useState(Date.now);
 
   async function grade(value: string) {
@@ -99,6 +100,20 @@ function PracticeItem({ n, item }: { n: number; item: Item }) {
           <strong className={result.correct ? "sl-good" : "sl-bad"}>{result.correct ? "Correct" : "Not yet"}</strong>
           <MathText text={" " + result.feedback} />
           {result.explanation && <MathText className="sl-muted sl-block" text={result.explanation} />}
+          {!result.correct &&
+            (disputed ? (
+              <div className="sl-muted sl-small sl-block">Thanks, noted for review.</div>
+            ) : (
+              <button
+                className="sl-link sl-block"
+                onClick={() => {
+                  setDisputed(true);
+                  send({ type: "PRACTICE", body: { action: "dispute", id: item.id } }).catch(() => setDisputed(false));
+                }}
+              >
+                I think my answer was right
+              </button>
+            ))}
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import { eventBatchSchema, USAGE_KINDS } from "@studylens/core";
 import { body, json, OPTIONS, route } from "@/lib/route";
 import { recordDemo, recordEvents } from "@/lib/learner";
 import { db } from "@/lib/supabase";
+import { observe } from "@/lib/watchdog";
 
 // Behaviour and overlay-usage events from the extension. Only the "usage" source is accepted
 // here: course events come from ingest diffs and claude events from MCP tools.
@@ -22,6 +23,7 @@ export const POST = route(["extension", "session"], async (req, { userId }) => {
   for (const e of accepted) {
     if (e.kind === "mark_feedback" && e.payload.verdict === "wrong" && typeof e.payload.skill === "string") {
       await recordDemo(userId, e.payload.skill, true, "mark-dispute", 0.5);
+      observe(userId, "check", "user_flagged_mark", `student marked a "${String(e.payload.kind ?? "mark")}" mark on ${e.payload.skill} as wrong`.slice(0, 200));
     }
   }
   return json(req, { accepted: accepted.length, dropped: events.length - accepted.length });

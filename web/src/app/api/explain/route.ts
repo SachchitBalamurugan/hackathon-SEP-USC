@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { DRAW_GUIDE, FenceSplitter, validateDrawOps, type SplitEvent } from "@studylens/core";
+import { DRAW_GUIDE, FenceSplitter, validateDrawOps, verifyExplain, type SplitEvent } from "@studylens/core";
 import { body, OPTIONS, route } from "@/lib/route";
 import { fence, streamText, UNTRUSTED_RULE } from "@/lib/llm";
 import { learnerContext, recordEvents } from "@/lib/learner";
 import { searchMaterials } from "@/lib/materials";
+import { watch } from "@/lib/watchdog";
 
 export const maxDuration = 120;
 
@@ -55,6 +56,8 @@ export const POST = route(["extension", "session"], async (req, { userId }) => {
   const stream = new ReadableStream({
     async start(controller) {
       const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      let rejectedOps = 0;
+      let stopReason: string | null = null;
       const emit = (events: SplitEvent[]) => {
         for (const e of events) {
           if (e.kind === "text") send({ type: "text", text: e.text });
@@ -65,17 +68,23 @@ export const POST = route(["extension", "session"], async (req, { userId }) => {
             } catch {
               /* a malformed block is dropped, never shown as raw JSON */
             }
-            const { ops } = validateDrawOps(parsed);
+            const { ops, rejected } = validateDrawOps(parsed);
+            rejectedOps += rejected;
             if (ops.length) send({ type: "draw", ops });
           }
         }
       };
       const splitter = new FenceSplitter();
       try {
-        for await (const delta of streamText({ system: SYSTEM, messages: [...input.history, { role: "user", content }], effort: "low" })) {
-          emit(splitter.push(delta));
-        }
-        emit(splitter.end());
+        // Draw ops that fail validation are already dropped; the watchdog records how many.
+        await watch(userId, "explain", async (run) => {
+          const messages = [...input.history, { role: "user" as const, content }];
+          for await (const delta of streamText({ system: SYSTEM, messages, effort: "low", onFinish: (r) => (stopReason = r) })) {
+            emit(splitter.push(delta));
+          }
+          emit(splitter.end());
+          run.saw(verifyExplain({ rejectedOps, stopReason }));
+        });
         send({ type: "done" });
       } catch (e) {
         console.error(e);

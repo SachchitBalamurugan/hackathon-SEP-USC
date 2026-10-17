@@ -1,5 +1,5 @@
 import "server-only";
-import { layoutGraph, type GraphLink } from "@studylens/core";
+import { layoutGraph, summarizeRuns, type GraphLink, type PipelineHealth, type RunRow } from "@studylens/core";
 import { db } from "./supabase";
 import { getMastery } from "./learner";
 
@@ -14,6 +14,13 @@ export async function getOnboarding(userId: string): Promise<Onboarding> {
     db().from("api_keys").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("kind", "mcp").not("last_used_at", "is", null),
   ]);
   return { extension: (ext.count ?? 0) > 0, courses: (courses.count ?? 0) > 0, firstCheck: (checks.count ?? 0) > 0, claude: (claude.count ?? 0) > 0 };
+}
+
+/** The watchdog's view of this student's last 30 days of tutor steps. */
+export async function getReliability(userId: string): Promise<PipelineHealth[]> {
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { data } = await db().from("agent_runs").select("pipeline, outcome, violations, observed").eq("user_id", userId).gte("at", since).limit(2000);
+  return summarizeRuns((data ?? []) as RunRow[]);
 }
 
 export type SkillNode = {

@@ -144,6 +144,7 @@ function Question({ item, result, onResult, onNext, last }: { item: Item; result
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [disputed, setDisputed] = useState(false);
   const [start] = useState(Date.now);
 
   const submit = useCallback(
@@ -232,6 +233,23 @@ function Question({ item, result, onResult, onNext, last }: { item: Item; result
           </div>
           <MathText className="mt-1.5 block text-[15px]" text={result.feedback} />
           {result.explanation && <MathText className="mt-2 block text-[14px] text-ink-2" text={result.explanation} />}
+          {!result.correct && (
+            <div className="mt-3 text-[13px]">
+              {disputed ? (
+                <span className="text-ink-2">Thanks. Disputed grades are logged so the grader can be checked.</span>
+              ) : (
+                <button
+                  className="link"
+                  onClick={() => {
+                    setDisputed(true);
+                    call({ action: "dispute", id: item.id }).catch(() => setDisputed(false));
+                  }}
+                >
+                  I think my answer was right
+                </button>
+              )}
+            </div>
+          )}
           <div className="mt-4 flex items-center justify-between gap-3">
             <span className="t-meta">{result.nextReview ? `Comes back ${new Date(result.nextReview).toLocaleDateString(undefined, { weekday: "long" })}` : ""}</span>
             <button className="btn btn-sm" onClick={onNext}>

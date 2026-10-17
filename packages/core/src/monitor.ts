@@ -142,3 +142,24 @@ export function breakerOpen(recent: RunOutcome[], { window = 20, threshold = 0.3
   if (last.length < minRuns) return false;
   return last.filter((o) => o === "failed" || o === "degraded").length / last.length > threshold;
 }
+
+export type RunRow = { pipeline: Pipeline; outcome: RunOutcome; violations: { code: string }[]; observed: boolean };
+export type PipelineHealth = { pipeline: Pipeline; runs: number; ok: number; repaired: number; degraded: number; failed: number; reported: number; topIssue: ViolationCode | null };
+
+/** Roll agent_runs rows up per pipeline: outcome counts, student reports, and the most common problem. */
+export function summarizeRuns(rows: RunRow[]): PipelineHealth[] {
+  const by = new Map<Pipeline, PipelineHealth & { codes: Map<string, number> }>();
+  for (const r of rows) {
+    const h = by.get(r.pipeline) ?? { pipeline: r.pipeline, runs: 0, ok: 0, repaired: 0, degraded: 0, failed: 0, reported: 0, topIssue: null, codes: new Map() };
+    if (r.observed) h.reported++;
+    else {
+      h.runs++;
+      h[r.outcome]++;
+    }
+    for (const v of r.violations) if (v.code in VIOLATIONS) h.codes.set(v.code, (h.codes.get(v.code) ?? 0) + 1);
+    by.set(r.pipeline, h);
+  }
+  return [...by.values()]
+    .map(({ codes, ...h }) => ({ ...h, topIssue: ([...codes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] as ViolationCode | undefined) ?? null }))
+    .sort((a, b) => b.runs + b.reported - (a.runs + a.reported));
+}

@@ -1,9 +1,10 @@
 import "server-only";
 import { z } from "zod";
 import { after } from "next/server";
-import { computeMastery, sanitizePayload, skillKey, type LearnerEvent, type Mastery } from "@studylens/core";
+import { computeMastery, sanitizePayload, skillKey, verifyMindDoc, type LearnerEvent, type Mastery } from "@studylens/core";
 import { db } from "./supabase";
 import { MODELS, parseStructured, fence, UNTRUSTED_RULE } from "./llm";
+import { watch, withCritique, type Content, type Run } from "./watchdog";
 
 // The learner model. Three inputs land in learner_events (course changes, Claude's
 // observations, StudyLens usage). Skill evidence also lands in skill_demos, from which mastery
@@ -142,6 +143,10 @@ Keep it under 250 words, in second person addressed to the tutor ("They..."). Co
 ${UNTRUSTED_RULE}`;
 
 export async function consolidate(userId: string) {
+  return watch(userId, "consolidate", (run) => consolidateRun(userId, run));
+}
+
+async function consolidateRun(userId: string, run: Run) {
   const { data: events } = await db()
     .from("learner_events")
     .select("id, source, kind, payload, at")
@@ -170,18 +175,16 @@ export async function consolidate(userId: string) {
     .map((m) => `${m.label}: ${Math.round(m.level * 100)}% (${m.status})`)
     .join("\n");
 
-  const doc = await parseStructured({
-    model: MODELS.tutor,
-    system: DOC_SYSTEM,
-    schema: z.object({ mind_doc: z.string() }),
-    effort: "low",
-    content: [
-      `Previous profile:\n${fence("profile", profile.mind_doc || "(none)")}`,
-      `Updated traits: ${JSON.stringify(fold.traits)}`,
-      `Mastery:\n${masteryText || "(none yet)"}`,
-      `New events:\n${fence("events", eventText)}`,
-    ].join("\n\n"),
-  });
+  const docContent = [
+    `Previous profile:\n${fence("profile", profile.mind_doc || "(none)")}`,
+    `Updated traits: ${JSON.stringify(fold.traits)}`,
+    `Mastery:\n${masteryText || "(none yet)"}`,
+    `New events:\n${fence("events", eventText)}`,
+  ].join("\n\n");
+  const writeDoc = (c: Content) => parseStructured({ model: MODELS.tutor, system: DOC_SYSTEM, schema: z.object({ mind_doc: z.string() }), effort: "low", content: c });
+  const verify = (d: { mind_doc: string }) => verifyMindDoc(d.mind_doc);
+  const drafted = await run.repair(await writeDoc(docContent), verify, (note, prev) => writeDoc(withCritique(docContent, prev, note)));
+  const doc = { mind_doc: trimWords(drafted.mind_doc, 300) };
 
   // Optimistic write: if another consolidation landed first, keep theirs and leave our events
   // pending so the next run sees them.
@@ -191,7 +194,10 @@ export async function consolidate(userId: string) {
     .eq("user_id", userId)
     .eq("version", profile.version)
     .select("version");
-  if (!written?.length) return { folded: 0, conflict: true };
+  if (!written?.length) {
+    run.saw([{ code: "version_conflict", detail: `profile moved past version ${profile.version}`, repairable: false }]);
+    return { folded: 0, conflict: true };
+  }
 
   await db()
     .from("learner_events")
@@ -201,4 +207,13 @@ export async function consolidate(userId: string) {
       events.map((e) => e.id),
     );
   return { folded: events.length };
+}
+
+/** Cut to the last full sentence within the word limit, so an over-long profile still reads well. */
+export function trimWords(text: string, max: number): string {
+  const words = text.trim().split(/\s+/);
+  if (words.length <= max) return text.trim();
+  const cut = words.slice(0, max).join(" ");
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf(".\n"));
+  return end > cut.length / 2 ? cut.slice(0, end + 1) : `${cut}…`;
 }
