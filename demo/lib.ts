@@ -24,7 +24,7 @@ export function env(): Record<string, string> {
 
 export function admin() {
   const e = env();
-  return createClient(e.SUPABASE_URL || e.NEXT_PUBLIC_SUPABASE_URL, e.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+  return createClient(e.SUPABASE_URL || e.NEXT_PUBLIC_SUPABASE_URL, e.SUPABASE_SERVICE_ROLE_KEY || e.SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 }
 
 export async function findUser(email: string) {

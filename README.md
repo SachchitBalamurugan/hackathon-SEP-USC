@@ -43,6 +43,14 @@ Create a project at supabase.com, then run `supabase/migrations/20261016000000_i
 
 Every table has RLS on with no client policies: the browser can't read or write anything directly, and all access goes through server routes that use the service key and filter by the authenticated user.
 
+### Quick local run on Windows
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\dev.ps1 -Seed
+```
+
+It installs packages, creates `web\.env.local` and opens it if missing, checks the values, applies any new `supabase\migrations` (with `SUPABASE_DB_URL` set), loads a demo account with three weeks of history (`-Seed`; log in as `demo@studylens.app` / `studylens-demo-2026`), starts the site and opens the Setup guide. On macOS or Linux: `npm run db:migrate`, `npm -w demo run seed`, `npm run dev:web`.
+
 ### 2. Web app
 
 ```bash

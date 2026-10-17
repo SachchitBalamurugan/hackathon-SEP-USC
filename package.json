@@ -14,7 +14,8 @@
     "test": "vitest run --exclude \"test/eval/**\"",
     "typecheck": "npm --workspaces --if-present run typecheck",
     "eval:check": "LIVE_EVAL=1 vitest run test/eval",
-    "build:ext-zip": "node scripts/build-extension-zip.mjs"
+    "build:ext-zip": "node scripts/build-extension-zip.mjs",
+    "db:migrate": "node scripts/migrate.mjs"
   },
   "devDependencies": {
     "vitest": "^5.0.5",
