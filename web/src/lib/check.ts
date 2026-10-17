@@ -22,9 +22,9 @@ import { learnerContext, recordDemo, recordEvents } from "./learner";
 import { watch, withCritique, type Content } from "./watchdog";
 
 // Check my work: one vision pass to find and diagnose mistakes, then a zoomed refine pass per
-// error to tighten its position. FschoolAI measured first-pass positions off by up to 22% of
-// the page; its fix measured its own ink, which a Kami worksheet does not give us, so here the
-// model re-locates each error inside a crop of the area it first pointed at.
+// error to tighten its position. First-pass positions can be off by a large fraction of the
+// page, and a Kami worksheet gives us no ink to measure, so the model re-locates each error
+// inside a crop of the area it first pointed at.
 
 export type CheckInput = {
   image: string; // base64 PNG or JPEG of the visible tab, without the data: prefix

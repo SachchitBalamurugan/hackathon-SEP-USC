@@ -1,5 +1,4 @@
-// Split a streaming model reply into prose and complete fenced blocks, after FschoolAI's
-// api/_boardStream.ts. Prose is released as it arrives; a ```draw fence is held back until it
+// Split a streaming model reply into prose and complete fenced blocks. Prose is released as it arrives; a ```draw fence is held back until it
 // closes, then emitted whole so the client can validate and animate it. A token boundary can
 // fall anywhere, including between two backticks, so any suffix that could still grow into an
 // opening fence is withheld until it provably cannot.

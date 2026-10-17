@@ -1,5 +1,4 @@
-// The overlay's drawing vocabulary: a subset of FschoolAI's board draw ops
-// (api/_board/actions/draw.ts). Coordinates are normalised 0..1 inside the explanation canvas,
+// The overlay's drawing vocabulary. Coordinates are normalised 0..1 inside the explanation canvas,
 // never pixels, so the model describes WHAT to draw and the client lays it out. Ops render in
 // order, one after another, which is what makes an explanation feel animated.
 

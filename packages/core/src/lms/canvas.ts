@@ -1,5 +1,4 @@
-// Raw Canvas REST objects onto StudyLens course/assignment records. Ported from FschoolAI
-// chrome-extension/canvasMap.js, which learned the hard way that Canvas sends numbers, numeric
+// Raw Canvas REST objects onto StudyLens course/assignment records. Canvas sends numbers, numeric
 // strings, null and prose like "n/a" in the same field, and repeats an enrollment per section.
 
 import type { LmsAssignment, LmsCourse } from "./types";

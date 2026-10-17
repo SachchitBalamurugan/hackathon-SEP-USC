@@ -3,7 +3,7 @@
 -- Access model: RLS is ON for every table with NO client policies, so the browser's anon and
 -- authenticated roles can read and write nothing directly. Every read and write goes through a
 -- server route using the service key, which filters by the user id resolved from the session or
--- API key (never from the request body). This is FschoolAI's server-only table posture, applied
+-- API key (never from the request body). This server-only table posture applies
 -- everywhere: practice answers, learner models and behaviour events must never be readable
 -- from a page script.
 
@@ -36,7 +36,7 @@ create table public.api_keys (
 );
 create index api_keys_user_idx on public.api_keys (user_id);
 
--- Short pairing codes: 8 characters, 5-minute expiry, single use, hash only (FschoolAI pattern).
+-- Short pairing codes: 8 characters, 5-minute expiry, single use, hash only.
 create table public.pair_codes (
   code_hash text primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -188,8 +188,7 @@ end $$;
 
 -- ── Functions (service role only) ───────────────────────────────────────────────────────────
 
--- Hybrid search: pgvector cosine plus full-text, fused by reciprocal rank (as FschoolAI's
--- rag_hybrid_search). The user filter is a parameter because only the service role can call it.
+-- Hybrid search: pgvector cosine plus full-text, fused by reciprocal rank. The user filter is a parameter because only the service role can call it.
 create or replace function public.search_material_chunks(
   p_user uuid, p_query text, p_embedding vector(1536), p_k int default 8
 ) returns table (chunk_id bigint, material_id uuid, text text, score double precision)

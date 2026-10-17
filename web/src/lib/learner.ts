@@ -9,7 +9,7 @@ import { watch, withCritique, type Content, type Run } from "./watchdog";
 // The learner model. Three inputs land in learner_events (course changes, Claude's
 // observations, StudyLens usage). Skill evidence also lands in skill_demos, from which mastery
 // is recomputed on every read. consolidate() periodically folds the event log into a profile
-// document and structured traits, the way FschoolAI's session-close rewrites tutor_mind.
+// document and structured traits.
 
 export const CONSOLIDATE_EVERY = 25;
 
@@ -135,7 +135,7 @@ const foldSchema = z.object({
 });
 
 const FOLD_SYSTEM = `You maintain a learning profile for one student. You receive their current traits and a batch of new events. Return updated traits.
-Evidence rules (from FschoolAI's student memory): asking about a topic is NOT evidence of mastery or weakness. Only answers, checked work and explicit observations count. Prefer the newer evidence when it conflicts with old traits. Keep a trait empty rather than guessing.
+Evidence rules: asking about a topic is NOT evidence of mastery or weakness. Only answers, checked work and explicit observations count. Prefer the newer evidence when it conflicts with old traits. Keep a trait empty rather than guessing.
 ${UNTRUSTED_RULE}`;
 
 const DOC_SYSTEM = `You write the living profile a tutor reads before teaching this student. Rewrite the profile from the previous version, the updated traits, their mastery and the new events.

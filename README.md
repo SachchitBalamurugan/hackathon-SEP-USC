@@ -83,8 +83,6 @@ The rest of this README is the technical reference: how it works, setup, and dev
 
 ## Architecture
 
-The infrastructure is adapted from FschoolAI: session-based LMS scraping, pairing codes, the check-my-work prompt, the draw-op vocabulary, the stream fence splitter, SM-2 and decaying skill memory.
-
 ```
 extension/      WXT (MV3) + React. Overlay in a shadow root on every page; worker holds the key.
 web/            Next.js 16 on Vercel: dashboard, /api/*, and the MCP server at /api/mcp.

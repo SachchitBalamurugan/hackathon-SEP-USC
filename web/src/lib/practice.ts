@@ -8,7 +8,7 @@ import { searchMaterials } from "./materials";
 import { observe, watch, withCritique, type Content } from "./watchdog";
 
 // Practice problems: generated from the student's open mistakes, weak skills and their own
-// course materials, using FschoolAI's api/exam.ts question shape. The answer key never leaves
+// course materials. The answer key never leaves
 // the server; grading happens here and feeds SM-2 scheduling and skill mastery.
 
 export const questionSchema = z.object({

@@ -2,7 +2,7 @@ import "server-only";
 import OpenAI from "openai";
 import { env } from "./env";
 
-// Embeddings only: text-embedding-3-small at 1536 dimensions, matching FschoolAI api/rag.ts.
+// Embeddings only: text-embedding-3-small at 1536 dimensions.
 // All generation goes through Claude (lib/llm.ts). Without OPENAI_API_KEY, search runs on
 // full-text alone, which is enough for a demo.
 

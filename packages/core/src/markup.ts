@@ -1,5 +1,4 @@
-// "Check my work" marks. Adapted from FschoolAI's checkWorkPrompt (api/_room/markup.ts): the
-// model diagnoses the belief behind an error, never guesses at unreadable strokes, and marks
+// "Check my work" marks. The model diagnoses the belief behind an error, never guesses at unreadable strokes, and marks
 // sparingly. Positions are normalised to the screenshot it was shown.
 
 import { z } from "zod";
@@ -30,7 +29,7 @@ export type Mark = CheckResult["marks"][number];
 
 const clamp01 = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.5);
 
-/** Clamp coordinates, cap the count at 10 (as FschoolAI does), and keep at most 2 "correct" marks. */
+/** Clamp coordinates, cap the count at 10, and keep at most 2 "correct" marks. */
 export function clampMarks(marks: Mark[]): Mark[] {
   let correct = 0;
   const out: Mark[] = [];

@@ -1,5 +1,4 @@
-// Paragraph/sentence-boundary chunking for course materials, after FschoolAI api/rag.ts
-// chunkText. Every chunk is bounded even when the source has no punctuation to split on.
+// Paragraph/sentence-boundary chunking for course materials. Every chunk is bounded even when the source has no punctuation to split on.
 
 export const CHUNK_MAX = 900;
 

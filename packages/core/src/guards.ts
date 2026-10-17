@@ -1,4 +1,4 @@
-// URL guards, ported from FschoolAI chrome-extension/background.js. The extension fetches with
+// URL guards. The extension fetches with
 // the student's cookies from a privileged worker, so a URL scraped from a page must never steer
 // it at an internal address or off the LMS's own domain.
 

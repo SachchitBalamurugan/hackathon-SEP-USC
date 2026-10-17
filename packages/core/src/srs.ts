@@ -1,4 +1,4 @@
-// Adaptive spaced repetition (SM-2), ported from FschoolAI src/lib/srs.ts.
+// Adaptive spaced repetition (SM-2).
 // Pure functions so they run identically in the extension and on the server.
 
 export type SrsState = {

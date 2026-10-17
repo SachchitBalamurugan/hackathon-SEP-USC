@@ -1,6 +1,5 @@
-// Google Classroom, scraped from the DOM the student's own session renders. Ported from FschoolAI
-// chrome-extension/content.js (collectClassroom) and background.js (decodeClassroomId,
-// parseClassroomDue). Selectors use href routes, aria-labels and text only, never CSS classes,
+// Google Classroom, scraped from the DOM the student's own session renders. Selectors use href
+// routes, aria-labels and text only, never CSS classes,
 // because Classroom's class names are generated and change between deploys.
 
 import type { LmsAssignment, LmsCourse } from "./types";

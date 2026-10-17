@@ -2,7 +2,7 @@ import { z } from "zod";
 import { hashSecret, json, newApiKey, newPairCode, preflight, resolveUser } from "@/lib/auth";
 import { db } from "@/lib/supabase";
 
-// Extension pairing, after FschoolAI api/extension-pair.ts. The dashboard issues a short code
+// Extension pairing. The dashboard issues a short code
 // (hash stored, 5 minutes, single use); the extension redeems it for a long-lived extension key.
 
 const schema = z.discriminatedUnion("action", [z.object({ action: z.literal("issue") }), z.object({ action: z.literal("redeem"), code: z.string().min(6).max(12) })]);

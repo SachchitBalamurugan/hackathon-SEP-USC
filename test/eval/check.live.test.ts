@@ -1,4 +1,4 @@
-// Vision eval for Check my work, after FschoolAI's scripts/detect-eval.mjs. It spends real API
+// Vision eval for Check my work. It spends real API
 // calls, so it only runs via `npm run eval:check` with ANTHROPIC_API_KEY set.
 //
 // Fixtures: eval/fixtures/<name>.png|jpg plus eval/fixtures/labels.json:

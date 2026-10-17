@@ -1,5 +1,5 @@
 // Skill mastery with forgetting. Each demonstration ({correct}) is weighted by an exponential
-// decay with a 14-day half-life (FschoolAI api/_brain/kernel.ts), so recent evidence dominates
+// decay with a 14-day half-life, so recent evidence dominates
 // and an old streak of right answers does not hold a skill "mastered" forever.
 
 export const HALF_LIFE_DAYS = 14;
@@ -14,7 +14,7 @@ export type Mastery = {
   /** Total decayed evidence weight; ~= how many recent demonstrations back the level. */
   confidence: number;
   demonstrations: number;
-  /** verified = enough fresh evidence and a high rate (FschoolAI verifySkills: min 3, rate 0.7). */
+  /** verified = enough fresh evidence and a high rate (at least 3 demonstrations, rate 0.7). */
   status: "unknown" | "learning" | "shaky" | "verified";
 };
 

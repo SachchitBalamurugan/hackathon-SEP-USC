@@ -14,7 +14,7 @@ export function newApiKey(): string {
   return KEY_PREFIX + randomBytes(24).toString("base64url");
 }
 
-/** Crockford-style alphabet without look-alikes, as FschoolAI's pairing codes. */
+/** Crockford-style alphabet without look-alikes. */
 const PAIR_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
 export function newPairCode(): string {
   const bytes = randomBytes(8);

@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-/* StudyLens design tokens, adapted from FschoolAI's live "template look" (src/css/fsui.css),
-   light theme. White ground, ink type, hairlines, one soft shadow. One restrained blue accent;
+/* StudyLens design tokens, light theme. White ground, ink type, hairlines, one soft shadow. One restrained blue accent;
    no purple anywhere. */
 :root {
   color-scheme: light;

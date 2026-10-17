@@ -2,7 +2,7 @@ import { mapCanvasAssignment, mapCanvasCourse, nextLink, stripHtml, isPrivateTar
 import { api } from "./api";
 import { syncTimes } from "./config";
 
-// Canvas sync through the student's own session, after FschoolAI's enumCanvasSW: the worker's
+// Canvas sync through the student's own session: the worker's
 // host permission lets fetch() carry the Canvas cookies, so no Canvas token is ever needed.
 
 const RESYNC_MS = 6 * 60 * 60 * 1000;
