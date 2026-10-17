@@ -118,7 +118,12 @@ function ClaudeSetup({ mcpUrl }: { mcpUrl: string }) {
       ) : (
         <Copyable
           label="Add to claude_desktop_config.json"
-          text={JSON.stringify({ mcpServers: { studylens: { command: "npx", args: ["-y", "mcp-remote", mcpUrl, "--header", `Authorization: Bearer ${token}`] } } }, null, 2)}
+          // The header value goes through env: on Windows, Claude Desktop splits args at spaces.
+          text={JSON.stringify(
+            { mcpServers: { studylens: { command: "npx", args: ["-y", "mcp-remote", mcpUrl, "--header", "Authorization:${AUTH_HEADER}"], env: { AUTH_HEADER: `Bearer ${token}` } } } },
+            null,
+            2,
+          )}
         />
       )}
       <p className="t-meta mt-3">Then ask Claude something like &quot;tutor me on what I got wrong this week&quot;. This step ticks off after Claude&apos;s first call.</p>
