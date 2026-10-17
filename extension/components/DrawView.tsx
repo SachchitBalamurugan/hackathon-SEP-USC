@@ -7,7 +7,7 @@ import { Latex, MathText } from "./MathText";
 // inside a block the pieces reveal in order (steps line by line, curves drawing themselves,
 // diagram nodes then edges). Free-placed text and shapes share one canvas.
 
-const COLORS: Record<string, string> = { ink: "var(--sl-ink)", blue: "#3b82f6", red: "#ef4444", green: "#16a34a", orange: "#f97316", purple: "#8b5cf6" };
+const COLORS: Record<string, string> = { ink: "var(--sl-ink)", blue: "#3b82f6", red: "#ef4444", green: "#16a34a", orange: "#f97316", purple: "#0f766e" };
 const col = (c?: string) => COLORS[c ?? "ink"] ?? COLORS.ink;
 const W = 320;
 const H = 220;
@@ -103,7 +103,7 @@ function Graph({ op, delay }: { op: Extract<DrawOp, { type: "graph" }>; delay: n
         {curves.map((c, i) =>
           c ? (
             <g key={i}>
-              <motion.path d={c.d} fill="none" stroke={col(c.color ?? (["blue", "red", "green", "purple"] as const)[i % 4])} strokeWidth={2.2} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: delay + (i + 1) * STEP, duration: 1.1, ease: "easeInOut" }} />
+              <motion.path d={c.d} fill="none" stroke={col(c.color ?? (["blue", "red", "green", "orange"] as const)[i % 4])} strokeWidth={2.2} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: delay + (i + 1) * STEP, duration: 1.1, ease: "easeInOut" }} />
               {c.label && (
                 <motion.text x={W - 6} y={14 + i * 14} textAnchor="end" className="sl-svg-label" fill={col(c.color)} {...appear(delay + (i + 1) * STEP + 0.8)}>
                   {c.label}

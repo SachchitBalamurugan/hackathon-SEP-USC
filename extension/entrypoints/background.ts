@@ -1,6 +1,6 @@
 import { refineWindow, type CheckResult, type Mark } from "@studylens/core";
 import { api, rawApi } from "@/lib/api";
-import { apiKey, settingsCache, type Settings } from "@/lib/config";
+import { apiKey, settingsCache, syncTimes, type Settings } from "@/lib/config";
 import { bitmapFromDataUrl, encodeRegion } from "@/lib/image";
 import { syncCanvas } from "@/lib/canvasSync";
 import type { CheckResponse, ExplainStart, Reply, Request } from "@/lib/messages";
@@ -25,7 +25,7 @@ async function handle(msg: Request, sender: Browser.runtime.MessageSender): Prom
   switch (msg.type) {
     case "STATUS": {
       const key = await apiKey.getValue();
-      return { paired: Boolean(key), settings: await settingsCache.getValue() };
+      return { paired: Boolean(key), settings: await settingsCache.getValue(), syncs: await syncTimes.getValue() };
     }
     case "PAIR": {
       const res = await rawApi("/api/pair", { body: { action: "redeem", code: msg.code } });

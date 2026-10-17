@@ -5,7 +5,7 @@ import { drift, type Anchor } from "@/lib/anchor";
 export type PlacedMarks = { checkId: string; marks: Mark[]; anchors: Anchor[]; refining: boolean[] };
 
 /** Fixed layer over the page. Marks follow the scroll container they were found in. */
-export function MarksLayer({ placed, onExplain, onFeedback, onDismiss }: { placed: PlacedMarks; onExplain: (m: Mark) => void; onFeedback: (m: Mark, verdict: "helpful" | "wrong") => void; onDismiss: () => void }) {
+export function MarksLayer({ placed, onExplain, onPractice, onFeedback, onDismiss }: { placed: PlacedMarks; onExplain: (m: Mark) => void; onPractice: (m: Mark) => void; onFeedback: (m: Mark, verdict: "helpful" | "wrong") => void; onDismiss: () => void }) {
   const [, setTick] = useState(0);
   const [openIdx, setOpenIdx] = useState<number | null>(() => {
     const i = placed.marks.findIndex((m) => m.kind === "error");
@@ -47,11 +47,14 @@ export function MarksLayer({ placed, onExplain, onFeedback, onDismiss }: { place
                     <button className="sl-btn sl-btn-sm" onClick={() => onExplain(m)}>
                       Explain
                     </button>
-                    <button className="sl-link" onClick={() => onFeedback(m, "helpful")}>
-                      Got it
+                    <button className="sl-btn sl-btn-sm sl-btn-ghost" onClick={() => onPractice(m)}>
+                      Practice this
                     </button>
-                    <button className="sl-link" onClick={() => onFeedback(m, "wrong")}>
-                      That's not wrong
+                    <button className="sl-link" onClick={() => onFeedback(m, "helpful")}>
+                      I got it
+                    </button>
+                    <button className="sl-link" style={{ color: "var(--sl-muted)" }} onClick={() => onFeedback(m, "wrong")}>
+                      That&apos;s not wrong
                     </button>
                   </div>
                 )}

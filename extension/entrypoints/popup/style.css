@@ -1,28 +1,42 @@
 :root {
-  color-scheme: light dark;
-  --ink: #1b1b1f;
-  --muted: #6b6b75;
-  --line: #e4e4e0;
-  --accent: #4f46e5;
-  --bad: #dc2626;
+  color-scheme: light;
+  --ink: #191917;
+  --ink-2: #45433e;
+  --muted: #6f6b63;
+  --line: rgba(25, 25, 23, 0.1);
+  --line-strong: rgba(25, 25, 23, 0.18);
+  --accent: #1f5fd1;
+  --good: #2e8757;
+  --bad: #b3372b;
   --bg: #ffffff;
+  --sunken: #f4f4f2;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --ink: #ececf1; --muted: #9a9aa6; --line: #33333b; --accent: #8b85ff; --bad: #f87171; --bg: #1a1a1f; }
-}
-body { margin: 0; width: 320px; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, sans-serif; }
-.p { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-h1 { font-size: 16px; margin: 0; }
+body { margin: 0; width: 340px; background: var(--bg); color: var(--ink); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+.p { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 15px; }
+.mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: var(--ink); color: #fff; }
 p { margin: 0; }
-a { color: var(--accent); }
+a { color: var(--accent); font-weight: 500; text-decoration: none; }
 .muted { color: var(--muted); font-size: 13px; }
 .block { display: block; font-size: 12px; margin-top: 2px; }
 .error { color: var(--bad); font-size: 13px; }
 form { display: flex; gap: 8px; }
-input:not([type]) , input[type="text"] { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; letter-spacing: 0.15em; background: transparent; color: inherit; }
-button { border: none; border-radius: 8px; padding: 8px 14px; background: var(--accent); color: #fff; font: inherit; cursor: pointer; }
-button:disabled { opacity: 0.5; }
-button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-.row { display: flex; gap: 10px; align-items: flex-start; }
-.row input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); }
-.space { justify-content: space-between; align-items: center; }
+input[type="text"], input:not([type]) { flex: 1; min-width: 0; height: 40px; border: 1px solid var(--line-strong); border-radius: 10px; padding: 0 12px; font: inherit; font-size: 16px; letter-spacing: 0.18em; text-transform: uppercase; background: #fff; color: inherit; }
+input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31, 95, 209, 0.1); }
+button { height: 40px; border: none; border-radius: 999px; padding: 0 16px; background: var(--ink); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+button:disabled { opacity: 0.45; }
+button.ghost { height: 32px; background: transparent; color: var(--ink-2); border: 1px solid var(--line-strong); font-size: 13px; }
+.sheet { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.row + .row { border-top: 1px solid var(--line); }
+.dot { width: 8px; height: 8px; border-radius: 999px; background: var(--line-strong); flex: none; }
+.dot.on { background: var(--good); }
+.grow { flex: 1; min-width: 0; }
+.switch { position: relative; width: 38px; height: 22px; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; border-radius: 999px; background: var(--line-strong); transition: background 150ms; }
+.switch span::after { content: ""; position: absolute; left: 2px; top: 2px; width: 18px; height: 18px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform 150ms; }
+.switch input:checked + span { background: var(--ink); }
+.switch input:checked + span::after { transform: translateX(16px); }
+.space { display: flex; justify-content: space-between; align-items: center; }
+kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--line-strong); border-radius: 5px; padding: 0 4px; }
