@@ -2,6 +2,8 @@
 
 **Feedback while you work, not after the grade.** A browser extension and Claude connector that checks a student's homework on any page, teaches instead of telling, and builds a learner model that keeps getting better the more they use it.
 
+**Live site:** https://studylens-two.vercel.app/ · Extension: https://studylens-two.vercel.app/studylens-extension.zip · MCP endpoint: `https://studylens-two.vercel.app/api/mcp`
+
 ## Team
 
 - **Sachchit Balamurugan**
