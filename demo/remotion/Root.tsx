@@ -4,19 +4,22 @@ import { ScreenDemo, clipFrames, type Clip, type ScreenProps } from "./ScreenDem
 import { Intro, INTRO_FRAMES } from "./Intro";
 import { Learning, LEARNING_FRAMES } from "./Learning";
 import { ClaudeChat, CLAUDE_FRAMES } from "./ClaudeChat";
+import { Setup, SETUP_FRAMES } from "./Setup";
 import { END, FPS, H, TITLE, W } from "./theme";
 
 // One composition per entry in web/src/lib/demos.ts. Screen demos wrap a clip from record.ts;
 // the rest are drawn here. render.ts renders each into web/public/demos.
 
 export const SCREEN: Partial<Record<DemoKey, string>> = {
-  setup: "studylens / dashboard / connect",
   sync: "canvas.school.edu / dashboard",
   check: "kami.app / worksheet-4.pdf",
   ask: "kami.app / worksheet-4.pdf",
   practice: "studylens / dashboard / practice",
   skills: "studylens / dashboard / skills",
 };
+
+/** Poster frames for drawn demos whose midpoint lands on a transition. */
+export const POSTER: Partial<Record<DemoKey, number>> = { setup: 1080 };
 
 async function loadClip(scene: string): Promise<Clip | null> {
   try {
@@ -35,6 +38,7 @@ export function Root() {
       <Composition id="intro" component={Intro} durationInFrames={INTRO_FRAMES} {...base} />
       <Composition id="learning" component={Learning} durationInFrames={LEARNING_FRAMES} {...base} />
       <Composition id="claude" component={ClaudeChat} durationInFrames={CLAUDE_FRAMES} {...base} />
+      <Composition id="setup" component={Setup} durationInFrames={SETUP_FRAMES} {...base} />
       {Object.entries(SCREEN).map(([scene, url]) => (
         <Composition
           key={scene}

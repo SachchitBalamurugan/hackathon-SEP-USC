@@ -11,6 +11,7 @@ import { addCursor, launch, moveClick, signIn, typeSlow } from "./browser";
 import { ROOT, SITE, sleep } from "./lib";
 
 type Cue = { at: number; text: string };
+// "setup" is not recorded: remotion/Setup.tsx draws the whole flow, including Chrome's own pages.
 type Scene = { seed: "full" | "empty"; paired?: boolean; run: (page: Page, s: Script) => Promise<void> };
 type Script = { cue: (text: string) => void; trim: () => void; extId: string };
 
@@ -18,28 +19,6 @@ const RAW = `${ROOT}demo/out/raw`;
 const overlay = (sel: string) => `studylens-overlay ${sel}`;
 
 const SCENES: Record<string, Scene> = {
-  setup: {
-    seed: "empty",
-    paired: false,
-    async run(page, s) {
-      await signIn(page);
-      s.trim();
-      s.cue("Your dashboard walks you through setup");
-      await sleep(2500);
-      await page.goto(`${SITE}/dashboard/connect`);
-      s.cue("Get a pairing code for the extension");
-      await moveClick(page, 'button:has-text("Get pairing code")', { delayAfter: 1200 });
-      const code = (await page.locator("code").first().textContent())?.trim() ?? "";
-      await sleep(1200);
-      await page.goto(`chrome-extension://${s.extId}/popup.html`);
-      s.cue("Type it into the extension");
-      await typeSlow(page, 'input[aria-label="Pairing code"]', code);
-      await moveClick(page, 'button:has-text("Pair")', { delayAfter: 2500 });
-      await page.goto(`${SITE}/dashboard/connect`);
-      s.cue("Then give Claude a key, and it can read your profile");
-      await moveClick(page, 'button:has-text("Create a Claude key")', { delayAfter: 3500 });
-    },
-  },
   sync: {
     seed: "empty",
     async run(page, s) {

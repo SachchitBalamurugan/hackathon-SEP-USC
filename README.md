@@ -50,6 +50,8 @@ npm run dev:ext                            # opens Chrome with the extension loa
 
 Sign in on the dashboard, open **Connect**, get a pairing code, and enter it in the extension popup.
 
+Students install from **Connect → Download extension**, served by `web/src/app/studylens-extension.zip/route.ts` from the prebuilt `web/extension/studylens-extension.zip` with the site's own address filled in. After changing anything in `extension/`, run `npm run build:ext-zip` and commit the new zip. The full walkthrough video lives on **Setup guide** in the dashboard.
+
 ### 4. Claude
 
 On **Connect**, create an MCP key. Then use one of these:

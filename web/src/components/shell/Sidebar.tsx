@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, CircleAlert, Home, Link2, LogOut, Network, PencilLine, Shield } from "lucide-react";
+import { BookOpen, CircleAlert, Home, Link2, LogOut, Network, PencilLine, PlayCircle, Shield } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { LogoMark } from "../Logo";
 
@@ -21,6 +21,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
   {
     label: "Account",
     items: [
+      { href: "/dashboard/setup", label: "Setup guide", icon: PlayCircle },
       { href: "/dashboard/connect", label: "Connect", icon: Link2 },
       { href: "/dashboard/privacy", label: "Privacy", icon: Shield },
     ],
@@ -80,7 +81,7 @@ export function Sidebar({ email, signOut }: { email: string; signOut: () => Prom
 
       {/* Phone bottom bar: the five most used destinations */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/95 backdrop-blur md:hidden" aria-label="Main">
-        {[GROUPS[0].items[0], GROUPS[0].items[1], GROUPS[0].items[2], GROUPS[0].items[3], GROUPS[2].items[0]].map((it) => {
+        {[GROUPS[0].items[0], GROUPS[0].items[1], GROUPS[0].items[2], GROUPS[0].items[3], GROUPS[2].items[1]].map((it) => {
           const on = isActive(path, it.href);
           const Icon = it.icon;
           return (

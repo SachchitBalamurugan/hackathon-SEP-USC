@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, PlayCircle } from "lucide-react";
 import type { Onboarding } from "@/lib/overview";
 
-const STEPS: { key: keyof Onboarding | "account"; title: string; detail: string; action?: { label: string; href: string } }[] = [
+export const STEPS: { key: keyof Onboarding | "account"; title: string; detail: string; action?: { label: string; href: string } }[] = [
   { key: "account", title: "Create your account", detail: "Done. Everything you learn is saved here." },
   { key: "extension", title: "Add the browser extension", detail: "It checks your work on any page and syncs your courses.", action: { label: "Install and pair", href: "/dashboard/connect#extension" } },
   { key: "courses", title: "Sync your courses", detail: "Open Canvas or Google Classroom once with the extension on.", action: { label: "How syncing works", href: "/dashboard/courses" } },
@@ -10,8 +10,10 @@ const STEPS: { key: keyof Onboarding | "account"; title: string; detail: string;
   { key: "claude", title: "Connect Claude (optional)", detail: "Claude gets your courses, skills and mistakes, and teaches to them.", action: { label: "Connect Claude", href: "/dashboard/connect#claude" } },
 ];
 
+export const stepDone = (status: Onboarding, k: (typeof STEPS)[number]["key"]) => k === "account" || status[k as keyof Onboarding];
+
 export function SetupChecklist({ status }: { status: Onboarding }) {
-  const done = (k: (typeof STEPS)[number]["key"]) => k === "account" || status[k as keyof Onboarding];
+  const done = (k: (typeof STEPS)[number]["key"]) => stepDone(status, k);
   const complete = STEPS.filter((s) => done(s.key)).length;
   if (complete === STEPS.length) return null;
   const next = STEPS.find((s) => !done(s.key));
@@ -24,8 +26,13 @@ export function SetupChecklist({ status }: { status: Onboarding }) {
             {complete} of {STEPS.length} done. Each step ticks off by itself.
           </p>
         </div>
-        <div className="h-1.5 w-32 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
-          <div className="h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${(complete / STEPS.length) * 100}%` }} />
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/setup" className="link inline-flex items-center gap-1.5 text-[13px]">
+            <PlayCircle size={14} /> Watch the setup video
+          </Link>
+          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
+            <div className="h-full rounded-full bg-ink transition-[width] duration-500" style={{ width: `${(complete / STEPS.length) * 100}%` }} />
+          </div>
         </div>
       </div>
       <ol>
