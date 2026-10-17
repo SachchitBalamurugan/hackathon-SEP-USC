@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import "@fontsource/caveat/600.css";
 import { AbsoluteFill, Audio, continueRender, delayRender, Easing, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { Logo, LogoMark } from "./parts";
@@ -15,8 +15,10 @@ export const PITCH_FRAMES = f(VO_SECONDS + 0.8);
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
-/** Seconds since the enclosing Sequence started. */
-const useT = () => useCurrentFrame() / FPS;
+/** Playback speed for a scene reused in another video (Part2.tsx): 1.5 plays it 1.5x faster. */
+export const TimeScale = createContext(1);
+/** Seconds since the enclosing Sequence started, in the scene's own timeline. */
+const useT = () => (useCurrentFrame() / FPS) * useContext(TimeScale);
 /** 0 → 1 over `dur` seconds from `at`. */
 const ramp = (t: number, at: number, dur = 0.45) => interpolate(t, [at, at + dur], [0, 1], { ...clamp, easing: ease });
 const show = (p: number, px = 18): CSSProperties => ({ opacity: p, transform: `translateY(${(1 - p) * px}px)` });
@@ -92,12 +94,12 @@ function Captions() {
   );
 }
 
-function Tag({ children, tone = C.dim }: { children: ReactNode; tone?: string }) {
+export function Tag({ children, tone = C.dim }: { children: ReactNode; tone?: string }) {
   return <span style={{ fontSize: 17, fontWeight: 650, letterSpacing: "0.08em", textTransform: "uppercase", color: tone, border: `1.5px solid ${tone}`, borderRadius: 999, padding: "6px 14px" }}>{children}</span>;
 }
 
 /** Track label in the top-right corner of a scene. */
-function Track({ name }: { name: string }) {
+export function Track({ name }: { name: string }) {
   const p = ramp(useT(), 0.2);
   return (
     <div style={{ position: "absolute", right: 56, top: 44, opacity: p }}>
@@ -408,7 +410,7 @@ const SOURCES = [
   { title: "Your Claude window", sub: "Through the MCP connector", items: ["Observed: prefers one worked example", "Goal: B+ in Algebra 1", "Demonstrated: combining like terms ✓"], color: "#c96442" },
 ];
 
-function Memory() {
+export function Memory() {
   const t = useT();
   // Anchors (seconds from 43.45): sources 0.3, log 2.8, mastery 8.0, decay 10.0, fold 14.4, profile 16.5.
   const logP = ramp(t, 2.8);
@@ -671,7 +673,7 @@ function SkillNode({ t, green }: { t: number; green: number }) {
 
 // ── 1:13 Compounds across students ──────────────────────────────────────────────────────────
 
-function Compounds() {
+export function Compounds() {
   const t = useT();
   // Anchors (seconds from 72.9): title 0.2, disputes 1.4, examples 3.0, sharper 4.6.
   const N = 72;
@@ -734,7 +736,7 @@ function Compounds() {
 
 // ── 1:21 Agents: what counts as failure and what happens next ───────────────────────────────
 
-function Agents() {
+export function Agents() {
   const t = useT();
   // Anchors (seconds from 81.5): failure 0.2, verifiers 3.3, contradiction 3.8-8.6, retry 8.8, dropped 11.6.
   const checks = [
