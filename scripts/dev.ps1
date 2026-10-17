@@ -47,8 +47,17 @@ if ($site -and $site.TrimEnd("/") -ne "http://localhost:3000") {
 if ($vars["ANTHROPIC_API_KEY"]) { Write-Host "Mode: server model (ANTHROPIC_API_KEY is set)" } else { Write-Host "Mode: Claude mode (no API key; your Claude Desktop does the checking)" }
 
 # Port 3000 must be free
-$busy = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue
-if ($busy) { Fail "Port 3000 is already in use, probably an old dev server. Close that window (or end the node.exe process) and run this again." }
+$busy = @(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue)
+if ($busy.Count -gt 0) {
+  $procs = @($busy | ForEach-Object { Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue } | Sort-Object Id -Unique)
+  $names = ($procs | ForEach-Object { "$($_.ProcessName) (PID $($_.Id))" }) -join ", "
+  Note "Port 3000 is in use by: $names"
+  $answer = Read-Host "Stop it and continue? [Y/n]"
+  if ($answer -and $answer.Trim().ToLower() -ne "y") { Fail "Free port 3000 and run this again." }
+  $procs | ForEach-Object { Stop-Process -Id $_.Id -Force }
+  Start-Sleep -Seconds 1
+  if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { Fail "Port 3000 is still in use. Close the program using it and run this again." }
+}
 
 # Database
 if ($vars["SUPABASE_DB_URL"]) {
