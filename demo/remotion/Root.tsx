@@ -6,6 +6,7 @@ import { Learning, LEARNING_FRAMES } from "./Learning";
 import { ClaudeChat, CLAUDE_FRAMES } from "./ClaudeChat";
 import { Setup, SETUP_FRAMES } from "./Setup";
 import { Pitch, PITCH_FRAMES } from "./Pitch";
+import { Short, SHORT_FRAMES, type Starts } from "./Short";
 import { Walkthrough, walkthroughLength, type Chapter, type LiveClip, type WalkthroughProps } from "./Walkthrough";
 import { END, FPS, H, TITLE, W } from "./theme";
 
@@ -59,6 +60,19 @@ export function Root() {
       <Composition id="setup" component={Setup} durationInFrames={SETUP_FRAMES} {...base} />
       {/* The pitch video; not a web demo, so render.ts skips it. Render with pitch.ts. */}
       <Composition id="pitch" component={Pitch} durationInFrames={PITCH_FRAMES} {...base} />
+      {/* One-minute cut of the same recordings to a voiceover; render with walkthrough.ts short. */}
+      <Composition
+        id="short"
+        component={Short}
+        {...base}
+        durationInFrames={SHORT_FRAMES}
+        defaultProps={{ starts: { setup: 0, tour: 0, check: 0, claude: 0 } as Starts }}
+        calculateMetadata={async ({ props }) => {
+          const starts = { ...props.starts };
+          for (const id of Object.keys(starts) as (keyof Starts)[]) starts[id] = ((await loadLive(id))?.startMs ?? 0) / 1000;
+          return { props: { starts } };
+        }}
+      />
       {/* The live walkthrough from live.ts recordings; render with walkthrough.ts (publicDir out/live). */}
       <Composition
         id="walkthrough"
