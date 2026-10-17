@@ -1,121 +1,88 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { requireUser } from "@/lib/session";
 import { getMastery, getOpenMistakes, getProfile, getUpcoming } from "@/lib/learner";
-import { db } from "@/lib/supabase";
+import { getOnboarding } from "@/lib/overview";
+import { TopBar } from "@/components/shell/TopBar";
+import { SetupChecklist } from "@/components/SetupChecklist";
+import { Empty, Row, Sheet, dueLabel, statusLabel, statusTone } from "@/components/ui";
 import { ProfileEditor } from "./ProfileEditor";
 
-const STATUS_COLOR: Record<string, string> = { verified: "bg-good", shaky: "bg-bad", learning: "bg-warn", unknown: "bg-muted" };
+export const metadata = { title: "Today" };
 
-function due(at: string | null) {
-  if (!at) return "no due date";
-  const days = Math.round((Date.parse(at) - Date.now()) / 86_400_000);
-  if (days < 0) return "overdue";
-  if (days === 0) return "due today";
-  if (days === 1) return "due tomorrow";
-  return `due in ${days} days`;
-}
-
-export default async function Overview() {
+export default async function Today() {
   const user = await requireUser();
-  const [upcoming, mastery, mistakes, profile, { count: courseCount }] = await Promise.all([
+  const [upcoming, mastery, mistakes, profile, onboarding] = await Promise.all([
     getUpcoming(user.id, 14),
     getMastery(user.id),
-    getOpenMistakes(user.id, 8),
+    getOpenMistakes(user.id, 5),
     getProfile(user.id),
-    db().from("courses").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    getOnboarding(user.id),
   ]);
-
-  if (!courseCount && !mastery.length) {
-    return (
-      <div className="card max-w-xl">
-        <h1 className="text-xl font-semibold">Welcome to StudyLens</h1>
-        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-muted">
-          <li>Install the browser extension and pair it from the <Link className="text-accent" href="/dashboard/connect">Connect</Link> page.</li>
-          <li>Open Canvas or Google Classroom once. StudyLens syncs your courses and deadlines.</li>
-          <li>On any homework page, open the StudyLens dock and press Check my work.</li>
-          <li>Optionally, connect Claude so it knows your courses and how you learn.</li>
-        </ol>
-      </div>
-    );
-  }
+  const weak = mastery.filter((m) => m.status === "shaky" || (m.status === "learning" && m.level < 0.6)).slice(0, 5);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <section className="card">
-        <h2 className="font-medium">Due in the next two weeks</h2>
-        {upcoming.length ? (
-          <ul className="mt-3 divide-y divide-line">
-            {upcoming.map((a) => (
-              <li key={a.id} className="flex items-baseline justify-between gap-3 py-2 text-sm">
-                <span className="min-w-0">
-                  {a.url ? (
-                    <a className="hover:text-accent" href={a.url} target="_blank" rel="noreferrer">
-                      {a.title}
-                    </a>
-                  ) : (
-                    a.title
-                  )}
-                  {a.courses?.name && <span className="ml-2 text-muted">{a.courses.name}</span>}
-                </span>
-                <span className={`shrink-0 ${a.missing ? "text-bad" : "text-muted"}`}>{a.missing ? "missing" : due(a.due_at)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-muted">Nothing due. Open your LMS with the extension installed to sync.</p>
-        )}
-      </section>
+    <>
+      <TopBar title={greeting} description="What's due, what to fix, and what StudyLens has learned about you." demo="intro" />
+      <div className="grid gap-6">
+        <SetupChecklist status={onboarding} />
 
-      <section className="card">
-        <h2 className="font-medium">Skills</h2>
-        {mastery.length ? (
-          <ul className="mt-3 space-y-3">
-            {mastery.slice(0, 12).map((m) => (
-              <li key={m.key} className="text-sm">
-                <div className="flex justify-between gap-2">
-                  <span className="truncate">{m.label}</span>
-                  <span className="text-muted">{Math.round(m.level * 100)}%</span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line" role="meter" aria-valuenow={Math.round(m.level * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={m.label}>
-                  <div className={`h-full ${STATUS_COLOR[m.status]}`} style={{ width: `${Math.round(m.level * 100)}%` }} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-muted">Skills appear after your first checked homework or practice.</p>
-        )}
-      </section>
+        <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+          <Sheet title="Due in the next two weeks" meta={upcoming.length ? `${upcoming.length} assignment${upcoming.length === 1 ? "" : "s"}` : undefined} action={<Link href="/dashboard/courses" className="link text-[13px]">All courses</Link>}>
+            {upcoming.length ? (
+              upcoming.slice(0, 8).map((a) => {
+                const d = dueLabel(a.due_at);
+                return (
+                  <Row
+                    key={a.id}
+                    href={a.url ?? undefined}
+                    mark={a.missing ? "danger" : d.tone === "danger" ? "danger" : d.tone === "warn" ? "warn" : "hollow"}
+                    title={a.title}
+                    subtitle={a.courses?.name}
+                    meta={<span className={a.missing || d.tone === "danger" ? "font-medium text-danger" : ""}>{a.missing ? "Missing" : d.text}</span>}
+                  />
+                );
+              })
+            ) : (
+              <Empty title="Nothing due yet" detail="Open Canvas or Google Classroom with the extension installed and your deadlines appear here." demo="sync" />
+            )}
+          </Sheet>
 
-      <section className="card">
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-medium">Open mistakes</h2>
-          {mistakes.length > 0 && (
-            <Link className="text-sm text-accent" href="/dashboard/practice">
-              Practice these
-            </Link>
-          )}
+          <Sheet title="Pick up where you left off" meta="Mistakes from your recent work" action={mistakes.length ? <Link href="/dashboard/mistakes" className="link text-[13px]">See all</Link> : undefined}>
+            {mistakes.length ? (
+              mistakes.map((m) => (
+                <Row key={m.id} mark="danger" title={m.note} subtitle={m.misconception ? `Likely thinking: ${m.misconception}` : m.skill_label}>
+                  <Link href={`/dashboard/practice?mistake=${m.id}`} className="btn btn-secondary btn-sm">
+                    Practice
+                  </Link>
+                </Row>
+              ))
+            ) : (
+              <Empty title="No open mistakes" detail="When you press Check my work, anything that needs fixing shows up here with practice to match." demo="check" />
+            )}
+          </Sheet>
         </div>
-        {mistakes.length ? (
-          <ul className="mt-3 space-y-3 text-sm">
-            {mistakes.map((m) => (
-              <li key={m.id}>
-                <span className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">{m.skill_label}</span>
-                <p className="mt-1">{m.note}</p>
-                {m.misconception && <p className="text-muted">Likely belief: {m.misconception}</p>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm text-muted">No open mistakes.</p>
-        )}
-      </section>
 
-      <section className="card">
-        <h2 className="font-medium">How StudyLens sees you</h2>
-        <p className="mt-1 text-xs text-muted">Built from your checks, practice, course updates and Claude conversations. Edit it if it&apos;s wrong.</p>
-        <ProfileEditor initial={profile.mind_doc} />
-      </section>
-    </div>
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.35fr]">
+          <Sheet title="Skills to work on" action={<Link href="/dashboard/skills" className="link inline-flex items-center gap-1 text-[13px]">Skills map <ArrowRight size={13} /></Link>}>
+            {weak.length ? (
+              weak.map((m) => (
+                <Row key={m.key} mark={statusTone(m.status)} title={m.label} subtitle={statusLabel(m.status)} meta={`${Math.round(m.level * 100)}%`} />
+              ))
+            ) : (
+              <Empty title={mastery.length ? "Nothing shaky right now" : "No skills yet"} detail={mastery.length ? "Keep checking your work and practicing to keep it that way." : "Skills appear after your first check or practice set."} />
+            )}
+          </Sheet>
+
+          <Sheet title="How StudyLens sees you" meta="Built from your checks, practice, courses and Claude conversations. Edit anything that's wrong.">
+            <div className="p-5">
+              <ProfileEditor initial={profile.mind_doc} />
+            </div>
+          </Sheet>
+        </div>
+      </div>
+    </>
   );
 }

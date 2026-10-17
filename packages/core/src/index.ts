@@ -11,3 +11,4 @@ export * from "./lms/canvas";
 export * from "./lms/classroom";
 export * from "./lms/diff";
 export * from "./expr";
+export * from "./graph";
