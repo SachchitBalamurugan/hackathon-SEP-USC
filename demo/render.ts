@@ -4,6 +4,7 @@
 // Usage: npm -w demo run render [-- check intro ...]
 //        npm -w demo run render -- setup --poster   (poster only)
 //        REMOTION_BROWSER=/path/to/chromium npm -w demo run render   (skip Remotion's Chrome download)
+import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, renderStill, selectComposition } from "@remotion/renderer";
@@ -35,8 +36,15 @@ for (const id of keys) {
     continue;
   }
   const t0 = Date.now();
-  if (!posterOnly) await renderMedia({ composition, serveUrl, codec: "h264", crf: 22, outputLocation: `${OUT}/${id}.mp4`, browserExecutable });
-  if (!posterOnly) await renderMedia({ composition, serveUrl, codec: "vp9", crf: 34, outputLocation: `${OUT}/${id}.webm`, browserExecutable });
+  if (!posterOnly) {
+    // Remotion writes full-range (yuvj420p) video, which Windows' hardware decoders reject, and the
+    // site then shows the title card instead. Render once, then encode limited-range copies.
+    const master = `${RAW}/${id}.master.mp4`;
+    await renderMedia({ composition, serveUrl, codec: "h264", crf: 16, outputLocation: master, browserExecutable });
+    const encode = (args: string[]) => execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", master, "-an", "-vf", "scale=in_range=pc:out_range=tv,format=yuv420p", "-color_range", "tv", ...args]);
+    encode(["-c:v", "libx264", "-preset", "slow", "-crf", "22", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-movflags", "+faststart", `${OUT}/${id}.mp4`]);
+    encode(["-c:v", "libvpx-vp9", "-crf", "34", "-b:v", "0", "-row-mt", "1", `${OUT}/${id}.webm`]);
+  }
   // Poster: a moment into the content, past the title card.
   const frame = Math.min(composition.durationInFrames - 1, POSTER[id] ?? (id in SCREEN ? TITLE + 75 : Math.round(composition.durationInFrames * 0.55)));
   await renderStill({ composition, serveUrl, frame, imageFormat: "jpeg", jpegQuality: 82, output: `${OUT}/${id}.jpg`, browserExecutable });
