@@ -1,5 +1,5 @@
 // Launch Playwright's Chromium with the localhost build of the extension, already paired.
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import { DEMO_EMAIL, DEMO_PASSWORD, ROOT, SITE, sleep } from "./lib";
 
@@ -12,13 +12,29 @@ export async function launch(opts: { videoDir?: string; paired?: boolean } = {})
   const ext = `${ROOT}demo/.ext`;
   const profile = `${ROOT}demo/.profile`;
   rmSync(profile, { recursive: true, force: true });
+  // A fresh profile that never offers to save passwords mid-recording.
+  mkdirSync(`${profile}/Default`, { recursive: true });
+  writeFileSync(`${profile}/Default/Preferences`, JSON.stringify({ credentials_enable_service: false, profile: { password_manager_enabled: false }, download: { prompt_for_download: false } }));
   if (opts.videoDir) mkdirSync(opts.videoDir, { recursive: true });
+  // Extensions only load in a headed browser; on a server, run under xvfb-run (DISPLAY is set).
+  // DEMO_CHROME points at a specific Chrome/Chromium build when Playwright's own isn't installed.
+  const executablePath = process.env.DEMO_CHROME || undefined;
   const ctx = await chromium.launchPersistentContext(profile, {
-    channel: "chromium",
-    headless: true,
+    ...(executablePath ? { executablePath } : { channel: "chromium" }),
+    headless: !process.env.DISPLAY,
     viewport: VIEWPORT,
     deviceScaleFactor: 1,
-    args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`, "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--hide-scrollbars"],
+    args: [
+      `--disable-extensions-except=${ext}`,
+      `--load-extension=${ext}`,
+      "--use-angle=swiftshader",
+      "--enable-unsafe-swiftshader",
+      "--hide-scrollbars",
+      // No "unsupported command-line flag" bar for the --no-sandbox Playwright adds as root.
+      "--test-type",
+      // Headed on a virtual display: a fixed window the screen recorder can frame.
+      ...(process.env.DISPLAY ? ["--window-position=0,0", `--window-size=${VIEWPORT.width},${VIEWPORT.height + 100}`] : []),
+    ],
     recordVideo: opts.videoDir ? { dir: opts.videoDir, size: VIEWPORT } : undefined,
   });
   let [sw] = ctx.serviceWorkers();
@@ -26,12 +42,23 @@ export async function launch(opts: { videoDir?: string; paired?: boolean } = {})
   const extId = new URL(sw.url()).host;
   if (opts.paired !== false) {
     const key = readFileSync(`${ROOT}demo/.demo-key`, "utf8").trim();
-    await sw.evaluate(async (k) => {
-      await chrome.storage.local.set({ apiKey: k, firstRunDone: true });
-    }, key);
+    // The worker can be listed before its extension APIs are ready; retry briefly.
+    for (let i = 0; ; i++) {
+      try {
+        await sw.evaluate(async (k) => {
+          await chrome.storage.local.set({ apiKey: k, firstRunDone: true });
+        }, key);
+        break;
+      } catch (e) {
+        if (i >= 10) throw e;
+        await sleep(500);
+        sw = ctx.serviceWorkers().at(-1) ?? sw;
+      }
+    }
   }
-  // The persistent context opens a blank first tab; close it so recordings start clean.
-  for (const p of ctx.pages()) await p.close();
+  // The persistent context opens a blank first tab. Headless, close it so recordings start clean;
+  // headed, closing the last tab closes the window, so callers' new pages open beside it.
+  if (!process.env.DISPLAY) for (const p of ctx.pages()) await p.close();
   return { ctx, sw, extId };
 }
 

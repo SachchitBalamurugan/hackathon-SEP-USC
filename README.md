@@ -118,4 +118,6 @@ npm -w demo run render                             # Remotion -> web/public/demo
 npm -w demo run studio                             # preview and tweak the compositions
 ```
 
+**Live walkthrough with demo data.** `DEMO_FIXTURES=1` (development only, never on a production build) runs the real site against an in-memory database seeded with a demo student (Maya, `maya@studylens.demo`, any password), with prepared model answers for the demo worksheet; `DEMO_CLAUDE_MODE=1` switches it to Claude mode. `demo/live.ts` drives the site and the real extension in a headed Chrome and records the screen with ffmpeg; `demo/walkthrough.ts` cuts the recordings into `out/walkthrough.mp4` with chapter cards and captions. See the comment at the top of `live.ts` for the exact commands.
+
 `intro`, `learning` and `claude` are drawn entirely in Remotion and render without a backend. The other six wrap a screen recording and are skipped until it exists. Set `REMOTION_BROWSER` to an existing headless Chrome to skip Remotion's download.

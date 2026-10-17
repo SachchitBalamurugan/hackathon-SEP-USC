@@ -2,6 +2,8 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { z } from "zod";
+import { fixturesOn } from "./fixtures";
+import { cannedStream, cannedStructured } from "./fixtures/canned";
 
 /**
  * One place for every model call. Sonnet 5.5 does the student-facing work (reading screenshots,
@@ -26,7 +28,7 @@ const withFallback = (model: string) => (model.startsWith("claude-sonnet-5-5") ?
  * questions, practice sets and the profile are handed to the student's own Claude through the
  * MCP connector instead (see claudeTasks.ts and mcp.ts).
  */
-export const hasModel = () => Boolean(process.env.ANTHROPIC_API_KEY);
+export const hasModel = () => Boolean(process.env.ANTHROPIC_API_KEY) || (fixturesOn() && process.env.DEMO_CLAUDE_MODE !== "1");
 
 /** Thrown where the server would call a model in Claude mode; `prompt` is what to say to Claude. */
 export class ClaudeModeError extends Error {
@@ -70,6 +72,7 @@ type ParseArgs<S extends z.ZodType> = {
 
 /** A single structured-output call, validated against a zod schema. */
 export async function parseStructured<S extends z.ZodType>(args: ParseArgs<S>): Promise<z.infer<S>> {
+  if (fixturesOn()) return args.schema.parse(await cannedStructured(args.system, args.content)) as z.infer<S>;
   const model = args.model ?? MODELS.tutor;
   const response = await anthropic().beta.messages.parse({
     model,
@@ -92,6 +95,11 @@ export async function* streamText(args: {
   maxTokens?: number;
   onFinish?: (stopReason: string | null) => void;
 }) {
+  if (fixturesOn()) {
+    yield* cannedStream();
+    args.onFinish?.("end_turn");
+    return;
+  }
   const stream = anthropic().beta.messages.stream({
     model: MODELS.tutor,
     max_tokens: args.maxTokens ?? 16000,

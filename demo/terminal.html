@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>claude — studylens</title>
+    <!-- A Claude Code-style terminal for demo recordings. live.ts drives it through window.term;
+         tool results it shows come from real calls to the StudyLens MCP server. -->
+    <style>
+      :root {
+        --bg: #1e1d1b;
+        --fg: #e9e6df;
+        --dim: #8f8a80;
+        --accent: #d97757;
+        --green: #7fc28f;
+        --blue: #8fb6ff;
+        --line: #3a3833;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); }
+      body { font: 19px/1.55 "DejaVu Sans Mono", "Liberation Mono", ui-monospace, Menlo, monospace; }
+      .bar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #2a2926; border-bottom: 1px solid var(--line); color: var(--dim); font-size: 13px; }
+      .dot { width: 12px; height: 12px; border-radius: 99px; background: #4a4842; }
+      .title { margin-left: 10px; }
+      #out { padding: 18px 22px 120px; white-space: pre-wrap; word-break: break-word; height: calc(100% - 38px); overflow-y: auto; }
+      .welcome { border: 1px solid var(--accent); border-radius: 8px; padding: 10px 16px; margin-bottom: 18px; display: inline-block; }
+      .welcome b { color: var(--accent); }
+      .prompt { color: var(--fg); margin: 14px 0 6px; }
+      .prompt .caret { color: var(--dim); }
+      .user { background: #2c2b28; display: block; padding: 6px 10px; border-radius: 6px; }
+      .tool { margin: 10px 0 2px; }
+      .tool .bullet { color: var(--green); }
+      .tool .name { font-weight: 700; }
+      .tool .mcp { color: var(--dim); }
+      .result { color: var(--dim); margin-left: 2ch; }
+      .result .elbow { color: var(--dim); }
+      .say { margin: 10px 0; }
+      .say .bullet { color: var(--fg); }
+      .note { color: var(--dim); font-style: italic; }
+      .ok { color: var(--green); }
+      .cursor { display: inline-block; width: 9px; height: 18px; background: var(--fg); vertical-align: -3px; animation: blink 1s steps(1) infinite; }
+      @keyframes blink { 50% { opacity: 0; } }
+      .spin { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="title">maya@laptop — claude</span></div>
+    <div id="out"></div>
+    <script>
+      const out = document.getElementById("out");
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const el = (cls, html) => {
+        const d = document.createElement("div");
+        d.className = cls;
+        if (html !== undefined) d.innerHTML = html;
+        out.appendChild(d);
+        out.scrollTop = out.scrollHeight;
+        return d;
+      };
+      const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+      window.term = {
+        welcome(cwd) {
+          el("welcome", `<b>✻</b> Welcome to <b>Claude Code</b>\n\n  <span style="color:var(--dim)">cwd: ${esc(cwd)}</span>`);
+        },
+        async type(text, { shell = false, cps = 28 } = {}) {
+          const p = el("prompt", `<span class="caret">${shell ? "$" : "&gt;"}</span> <span class="t"></span><span class="cursor"></span>`);
+          const t = p.querySelector(".t");
+          for (const ch of text) {
+            t.textContent += ch;
+            out.scrollTop = out.scrollHeight;
+            await sleep(1000 / cps);
+          }
+          await sleep(250);
+          p.querySelector(".cursor").remove();
+          if (!shell) p.classList.add("user");
+        },
+        line(text, cls = "result") {
+          el(cls, esc(text));
+        },
+        async thinking(ms = 1200) {
+          const d = el("note", '<span class="spin">✻</span> Thinking…');
+          await sleep(ms);
+          d.remove();
+        },
+        tool(name, args) {
+          const a = args ? `(${esc(args)})` : "";
+          return el("tool", `<span class="bullet">⏺</span> <span class="name">studylens - ${esc(name)}</span> <span class="mcp">(MCP)${a}</span>`);
+        },
+        result(lines) {
+          const arr = Array.isArray(lines) ? lines : String(lines).split("\n");
+          const shown = arr.slice(0, 6);
+          el("result", shown.map((l, i) => `${i === 0 ? '<span class="elbow">⎿</span> ' : "  "}${esc(l)}`).join("\n") + (arr.length > 6 ? `\n  <span class="note">… +${arr.length - 6} lines</span>` : ""));
+        },
+        async say(text, cps = 70) {
+          const d = el("say", '<span class="bullet">⏺</span> <span class="t"></span>');
+          const t = d.querySelector(".t");
+          for (const word of text.split(/(?<= )/)) {
+            t.textContent += word;
+            out.scrollTop = out.scrollHeight;
+            await sleep((word.length * 1000) / cps);
+          }
+        },
+        ok(text) {
+          el("ok", esc(text));
+        },
+      };
+    </script>
+  </body>
+</html>
