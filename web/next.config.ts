@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // @studylens/core ships TypeScript source; Next compiles it with the app.
+  transpilePackages: ["@studylens/core"],
   turbopack: {
     rules: {
       "*.css": {
