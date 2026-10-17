@@ -5,6 +5,7 @@ import { Intro, INTRO_FRAMES } from "./Intro";
 import { Learning, LEARNING_FRAMES } from "./Learning";
 import { ClaudeChat, CLAUDE_FRAMES } from "./ClaudeChat";
 import { Setup, SETUP_FRAMES } from "./Setup";
+import { Pitch, PITCH_FRAMES } from "./Pitch";
 import { END, FPS, H, TITLE, W } from "./theme";
 
 // One composition per entry in web/src/lib/demos.ts. Screen demos wrap a clip from record.ts;
@@ -39,6 +40,8 @@ export function Root() {
       <Composition id="learning" component={Learning} durationInFrames={LEARNING_FRAMES} {...base} />
       <Composition id="claude" component={ClaudeChat} durationInFrames={CLAUDE_FRAMES} {...base} />
       <Composition id="setup" component={Setup} durationInFrames={SETUP_FRAMES} {...base} />
+      {/* The pitch video; not a web demo, so render.ts skips it. Render with pitch.ts. */}
+      <Composition id="pitch" component={Pitch} durationInFrames={PITCH_FRAMES} {...base} />
       {Object.entries(SCREEN).map(([scene, url]) => (
         <Composition
           key={scene}

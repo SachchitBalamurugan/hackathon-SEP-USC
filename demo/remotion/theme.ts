@@ -12,6 +12,7 @@ export const C = {
   accentSoft: "rgba(31, 95, 209, 0.08)",
   good: "#2e8757",
   goodSoft: "rgba(46, 135, 87, 0.1)",
+  warn: "#a86516",
   danger: "#b3372b",
   dangerSoft: "rgba(179, 55, 43, 0.09)",
   pen: "#24408f",
